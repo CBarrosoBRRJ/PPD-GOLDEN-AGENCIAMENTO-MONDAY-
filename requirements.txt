@@ -1,0 +1,4 @@
+# mesma versão do cliente BigQuery validada no PPD-SILVER-MONDAY (15/10/2026)
+google-cloud-bigquery==3.46.1
+# fusos horários para zoneinfo na imagem slim
+tzdata==2026.5

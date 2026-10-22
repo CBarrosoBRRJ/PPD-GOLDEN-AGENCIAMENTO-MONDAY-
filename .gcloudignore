@@ -1,0 +1,13 @@
+# Enviado ao Cloud Build no "gcloud run jobs deploy --source .": só o necessário para a imagem.
+.env
+.gcloudignore
+.gitignore
+.markdownlint.json
+docs/
+deploy/
+tools/
+README.md
+__pycache__/
+*.pyc
+CLAUDE.md
+.git/

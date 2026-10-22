@@ -1,0 +1,37 @@
+coluna,tipo,descricao
+projeto_id,STRING,"Chave do projeto do início ao fim (igual à silver; atravessa a migração de 03/09/2026). Com passo, forma a chave da tabela"
+item_id_atual,STRING,ID do item no board atual do monday
+item_id_legado,STRING,ID do item no board antigo (conta viu2); vazio nos projetos criados depois da migração
+board_id,STRING,ID do board no monday
+nome_projeto,STRING,"Nome do projeto, como na silver"
+status_atual,STRING,"Status do projeto hoje (foto do dia); serve para filtrar, ex.: só encerrados"
+talento,STRING,"Talento do projeto (silver): um nome, Squad de Talentos (mais de um) ou vazio"
+exclusivo,BOOL,O talento era exclusivo na data do projeto (silver); vazio sem talento
+tipo_de_input,STRING,Tipo de input (forma oficial da silver)
+tipo_de_output,STRING,Tipo de output (forma oficial da silver)
+marca,STRING,"Marca do projeto (Catálogo de Marcas, pela silver)"
+orcamento,STRING,"Nome da pessoa da equipe de orçamento (R5); mais de uma = nomes separados por vírgula, na ordem do monday. É o responsável de hoje, não o da época de cada passo"
+passo,INT64,Ordem da passagem do projeto pelos status (1 = Entrada)
+status,STRING,Status desta passagem (como no log; nomes antigos mantidos)
+fase,STRING,"Relógio do SLA (R15): equipe (Entrada, elaboração, revisão e status novos), cliente (Aguardando Feedback), standby (Standby, relógio próprio) ou fechamento (Encerrado, Negócio Fechado, Declinado, Sem retorno)"
+entrada,DATETIME,Quando o projeto chegou neste status (horário de Brasília)
+saida,DATETIME,Quando o projeto mudou para o status seguinte (horário de Brasília); vazio = status atual
+saida_horario,STRING,"Horário da mudança que encerrou o passo (R21): expediente, antes do expediente, depois do expediente ou fim de semana ou feriado"
+saida_por,STRING,Quem fez a mudança que encerrou o passo (nome no monday; a automação aparece como Automação do monday)
+saida_por_automacao,BOOL,A mudança que encerrou o passo foi feita por uma automação (ex.: Encerrado automático 30 dias depois de Aguardando Feedback)
+sla_corrido_horas,FLOAT64,Tempo no status em horas corridas (saída − entrada; R13); vazio enquanto o status não termina
+sla_util_horas,FLOAT64,"Tempo no status em horas úteis (R13): só seg–sex, 10h–19h, fora de feriados e dias sem expediente (R14); vazio enquanto o status não termina"
+fora_expediente,BOOL,A mudança que encerrou o passo foi feita por uma pessoa fora do horário (R20); a automação não conta
+hora_extra_horas,FLOAT64,"Hora extra estimada (R20): depois do expediente = das 19h (ou da entrada) até a mudança; antes do expediente ou fim de semana/feriado = da entrada até a mudança, só no mesmo dia; vazio quando não se aplica ou não dá para estimar"
+sla_corrido,STRING,Leitura do tempo corrido: Xd HHhMM (1 dia = 24 h)
+sla_util,STRING,Leitura do tempo útil: Xd HHhMM (1 dia útil = 9 h)
+em_aberto,BOOL,"Status atual ainda em andamento (fase equipe, cliente ou standby; R17)"
+aberto_ha_corrido_horas,FLOAT64,"Há quanto tempo o status atual está aberto, em horas corridas, até a execução (_processado_em); muda a cada execução"
+aberto_ha_util_horas,FLOAT64,"Há quanto tempo o status atual está aberto, em horas úteis, até a execução; muda a cada execução"
+alerta,BOOL,"Cliente sem retorno: em Aguardando Feedback, em aberto, há mais de 10 dias úteis (R18; limite provisório)"
+retrabalho,BOOL,Voltou de Aguardando Feedback para um status da equipe (R19)
+reaberto,BOOL,"Saiu de um fechamento (Encerrado, Declinado) e voltou a andar (R19)"
+entrega_sem_aguardando,BOOL,"Fechou vindo da equipe sem registrar a nova entrega em Aguardando Feedback, depois de já ter ido ao cliente (R19); Declinado não conta"
+encerrado_sem_entrega,BOOL,Fechou vindo da equipe sem nunca ter ido ao cliente (R19); Declinado não conta
+link_projeto,STRING,Link do projeto no monday
+_processado_em,TIMESTAMP,Momento da execução que gerou a tabela
