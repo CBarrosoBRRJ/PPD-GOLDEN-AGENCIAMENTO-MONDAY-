@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Situação** | ✅ **aprovada pelo Caio** (22/10/2026) — validação completa rodada no BigQuery só com leitura (toda ok, refeita depois da revisão do Codex); **tabela ainda não criada** e fora do job: comandos em [`deploy/gcp_setup.md`](../../deploy/gcp_setup.md), "Pendente: gld_agenciamento_entrada_diaria" |
+| **Situação** | 🚀 **em produção desde 22/10/2026** (criada 18:5x Brasília pelo `criar_…sql`, validação toda ok; 1ª carga pelo job às 19:08: 1.826 linhas); atualizada **seg–sex 09:00** pelo job `gold-agenciamento`, junto com a SLA, na mesma transação |
 | **Uma linha por** | data × `grupo_input` × `tipo_de_input` × `familia`, **só quando há card** (sem linhas com zero) |
 | **Para que serve** | contagem diária de cards criados no Agenciamento (2024 a 2026) para análise de tendência e previsão de demanda. Uma tabela só: os recortes (grupo, família, com ou sem estimados) e o calendário completo (dias com zero) são feitos por quem consome |
 | **Quem usa** | modelos de previsão e o site de relatórios (outro projeto) |
@@ -144,3 +144,4 @@ Proativo 246 · 857 + 97; Sem tipo 44 · 82 + 0.
 | 22/10/2026 | **Aprovada pelo Caio** com ajustes: prioridade R9 aprovada; de-para das variantes antigas de output (R8); aviso WARNING para tipos novos (R7, `job/main.py`); referência 328 / 3.577 / 5.488; colunas de calendário `dia_semana`, `ano`, `mes`, `inicio_semana` (R11). Validação 22/22 sem gravar |
 | 22/10/2026 | Revisão do Codex: validação com calendário até a maior saída (saída futura), conferência dia a dia de reais e estimados, mapa tipo → grupo; trava fixa por board histórico (327 / 3.578) no lugar da por ano (decisão do Caio); job grava as tabelas tudo ou nada. Validação toda ok sem gravar |
 | 22/10/2026 | 2ª revisão do Codex (apto para implantar): calendário da validação com teto de hoje + 60 dias e só sobre cards a estimar; trava por board sem o limite "até ontem"; aviso para saída além do teto; job com ROLLBACK explícito. Validação toda ok sem gravar |
+| 22/10/2026 | **Implantada** pelo Caio (Cloud Shell, a partir do commit `75bbf3c`): tabela criada e validada, permissões, job reimplantado com as duas tabelas, ensaio `rkwp9` e carga real `x4sl4` (19:08 Brasília, 1.826 linhas) |

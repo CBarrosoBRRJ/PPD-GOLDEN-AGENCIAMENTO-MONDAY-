@@ -9,7 +9,7 @@ projeto inteiro está no [PRD](docs/PRD.md).
 | Tabela | Grão | Ficha |
 |---|---|---|
 | `gold_monday.gld_agenciamento_2026_sla_movimentos` | passagem de um projeto por um status | [docs/tabelas/gld_agenciamento_2026_sla_movimentos.md](docs/tabelas/gld_agenciamento_2026_sla_movimentos.md) |
-| `gold_monday.gld_agenciamento_entrada_diaria` (aprovada, aguarda implantação) | data × grupo de input × tipo de input × família | [docs/tabelas/gld_agenciamento_entrada_diaria.md](docs/tabelas/gld_agenciamento_entrada_diaria.md) |
+| `gold_monday.gld_agenciamento_entrada_diaria` (em produção desde 22/10/2026) | data × grupo de input × tipo de input × família | [docs/tabelas/gld_agenciamento_entrada_diaria.md](docs/tabelas/gld_agenciamento_entrada_diaria.md) |
 
 ## Estrutura
 
@@ -54,6 +54,6 @@ Dockerfile, requirements.txt, .gcloudignore   imagem do job
 Cloud Run Job agendado **seg–sex 09:00** (Brasília), depois da silver: confere a silver do dia, calcula e valida
 todas as tabelas e só então troca o conteúdo de todas numa única transação (tudo ou nada). Código em `job/main.py`;
 imagem pelo `Dockerfile`; implantação e operação em [deploy/gcp_setup.md](deploy/gcp_setup.md). Em produção desde
-21/10/2026 com a SLA; a versão tudo-ou-nada com a entrada diária está pronta e **aguarda implantação** (estado real
-em `deploy/gcp_setup.md`, "Estado da produção"). O código vai ao Cloud Shell por `git clone` do repositório
+21/10/2026 (SLA) e, com as duas tabelas e tudo ou nada, desde 22/10/2026 (estado real em `deploy/gcp_setup.md`,
+"Estado da produção"). O código vai ao Cloud Shell por `git clone` do repositório
 privado `CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (GitHub); o `.env` fica fora do Git.

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Responsável** | Caio Barroso (dados) |
-| **Situação** | **Em produção desde 21/10/2026**: `gld_agenciamento_2026_sla_movimentos` criada e atualizada pelo job `gold-agenciamento` (seg–sex 09:00, 1ª execução automática 22/10); alerta por e-mail testado. Estado e operação: [`deploy/gcp_setup.md`](../deploy/gcp_setup.md) |
+| **Situação** | **Em produção**: `gld_agenciamento_2026_sla_movimentos` (desde 21/10/2026) e `gld_agenciamento_entrada_diaria` (desde 22/10/2026), atualizadas juntas pelo job `gold-agenciamento` (seg–sex 09:00, tudo ou nada); alerta por e-mail testado; código no GitHub (D17). Estado e operação: [`deploy/gcp_setup.md`](../deploy/gcp_setup.md) |
 | **Última revisão** | 21/10/2026 |
 | **Projeto GCP** | `gglobo-viu-dados-hdg-prd` (BigQuery `US`) |
 | **Dataset de destino** | `gold_monday` (variável `local_dataset_gold` no `.env`) |
@@ -111,10 +111,10 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | # | Passo | Quem | Situação |
 |---|---|---|---|
 | 1 | Implantar (tabela, conta de serviço, job, ensaio, 1ª carga, agendamento 09:00, alerta e teste do alerta) | Caio, no Cloud Shell | ✅ 21/10/2026 |
-| 2 | Conferir a 1ª execução agendada (dia útil seguinte, 09:00) | Caio / Claude (leitura) | pendente |
+| 2 | Conferir a 1ª execução agendada (22/10, 09:02: SLA gravada) e a 1ª com as duas tabelas (23/10 09:00) | Caio / Claude (leitura) | ✅ 22/10; 23/10 pendente |
 | 3 | Conectar o Power BI à tabela | Caio | pendente |
 | 4 | Levar à equipe as definições e hábitos de [melhorias_processo.md](melhorias_processo.md) | Caio | pendente |
-| 5 | Novas tabelas gold | Caio + Claude | próxima sessão |
+| 5 | Novas tabelas gold: `gld_agenciamento_entrada_diaria` (D15) implantada em 22/10/2026; próximas, o Caio traz os temas | Caio + Claude | ✅ 1ª; demais a definir |
 | 6 | ✅ Repositório no GitHub criado em 22/10/2026 (D17) | Caio | feito |
 
 ## 8. Em aberto
@@ -136,4 +136,5 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | 21/10/2026 | **Implantado** pelo Caio no Cloud Shell: tabela criada (14.776 linhas, validação 16/16), conta de serviço, job, ensaio, 1ª carga (21:16 UTC), agendamento seg–sex 09:00 e alerta (teste recebido por e-mail) |
 | 22/10/2026 | 1ª execução automática do job (09:02, SLA gravada). Nova tabela `gld_agenciamento_entrada_diaria` (D15) construída com o Caio a partir dos ensaios da `demanda_diaria` (descartada antes de ir ao BigQuery); validação 20/20 sem gravar; `job/main.py` aceita tabela sem `projeto_id`; aguarda aprovação e implantação |
 | 22/10/2026 | Entrada diária **aprovada** (prioridade de famílias, de-para de outputs antigos, aviso de tipos novos, colunas de calendário). Revisão do Codex (8 achados, todos conferidos; nenhum ocorria nos dados): job tudo ou nada (D16); SLA com R23 e R10 antes de R9/R22 (histórico idêntico ao de produção); validações mais fortes nas duas tabelas; trava por board histórico. 2ª revisão do Codex: apto para implantar; ajustes finais (teto do calendário da validação, trava sem "ontem", ROLLBACK explícito no job, textos). Pendentes: A7 (marcador de lote da silver) e melhorias P1/P2 |
-| 22/10/2026 | Repositório no GitHub (D17): primeiro commit com as duas tabelas; deploy passa a `git clone`; zip e `tools/empacotar.py` retirados |
+| 22/10/2026 | Repositório no GitHub (D17): primeiro commit `75bbf3c` com as duas tabelas; deploy passa a `git clone`; zip e `tools/empacotar.py` retirados |
+| 22/10/2026 | **Implantado** pelo Caio: `gld_agenciamento_entrada_diaria` criada e validada; permissões; job tudo-ou-nada com as duas tabelas; ensaio e carga real (19:08 Brasília: SLA 14.838 linhas, entrada 1.826). Agendamento seg–sex 09:00 passa a atualizar as duas |

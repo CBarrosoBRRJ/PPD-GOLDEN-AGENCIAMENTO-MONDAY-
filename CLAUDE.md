@@ -18,8 +18,9 @@ bronze 08:00 (PPD-BRONZE-MONDAY) → silver 08:30 (PPD-SILVER-MONDAY) → gold 0
 
 | Item | Estado |
 |---|---|
-| `gold_monday.gld_agenciamento_2026_sla_movimentos` | 🚀 **em produção** — uma linha por passagem de um projeto por um status; 36 colunas; 14.776 linhas / 3.095 projetos na 1ª carga; validação 16/16. **Concluída** |
-| Job `gold-agenciamento` | Cloud Run Job (`us-central1`) + Scheduler `gold-agenciamento-diario` **seg–sex 09:00** (Brasília); 1ª execução automática 22/10/2026 |
+| `gold_monday.gld_agenciamento_2026_sla_movimentos` | 🚀 **em produção** desde 21/10/2026 — uma linha por passagem de um projeto por um status; 36 colunas; regras R1–R23; 14.838 linhas / 3.105 projetos em 22/10; validação 19/19. **Concluída** |
+| `gold_monday.gld_agenciamento_entrada_diaria` | 🚀 **em produção** desde 22/10/2026 — cards criados por data × grupo de input × tipo × família (boards 2024–2026), data estimada separada; 1.826 linhas na 1ª carga; validação toda ok. **Concluída** (para previsão de demanda; análises ficam no consumidor) |
+| Job `gold-agenciamento` | Cloud Run Job (`us-central1`) + Scheduler `gold-agenciamento-diario` **seg–sex 09:00** (Brasília); atualiza as duas tabelas **tudo ou nada** (D16); código do commit `75bbf3c` |
 | Alerta | política "gold-agenciamento falhou" → e-mail (testado em 21/10) |
 | Git / GitHub | repositório privado `https://github.com/CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (criado em 22/10/2026, branch `main`). Deploy por `git clone` no Cloud Shell; o `.env` fica fora. Commit e push só quando o Caio pedir |
 
@@ -30,7 +31,7 @@ Detalhe da produção (conta de serviço, permissões, execuções, ids): `deplo
 | # | Pendência | Quem |
 |---|---|---|
 | 1 | ✅ 1ª execução automática conferida: 22/10/2026 09:02 (Brasília), SLA gravada | — |
-| 2 | **Próximas tabelas gold**. **Aprovada** (22/10/2026), aguarda o Caio implantar: `gld_agenciamento_entrada_diaria` (cards criados por data × grupo de input × tipo × família, boards 2024–2026, para previsão de demanda; substituiu os ensaios da `demanda_diaria`, que nunca foi criada). Validação toda ok sem gravar; trava por board histórico 327 / 3.578. Revisão do Codex aplicada (D16: job tudo ou nada; SLA com R23 e R10 antes de R9/R22). O `job/main.py` e o SELECT da SLA mudaram, então a reimplantação é obrigatória (a SLA não precisa ser recriada: esquema igual). Comandos de criação e do job em `deploy/gcp_setup.md` ("Pendente: gld_agenciamento_entrada_diaria"). O calendário de feriados está copiado igual na SLA, nesta tabela e na validação dela: mudar nos três juntos | Caio + Claude |
+| 2 | Conferir a 1ª execução automática com as duas tabelas (23/10/2026 09:00): `_processado_em` das duas ≈ 23/10 12:0x UTC e iguais entre si (mesma transação); nenhuma linha ERROR/WARNING no log. Depois: **próximas tabelas gold** (o Caio traz os temas). Lembrete: o calendário de feriados está copiado igual na SLA, na entrada diária e na validação dela — mudar nos três juntos | Claude (leitura) a pedido; Caio + Claude |
 | 3 | ✅ Repositório no GitHub criado e deploy trocado por `git clone` (22/10/2026) | — |
 | 4 | Relatório/dash/site de SLA lendo a tabela — **em outro projeto** | Caio |
 | 5 | Levar à equipe `docs/melhorias_processo.md` (meta de SLA, dono de cada status, hábitos no monday, coluna "Motivo da volta") | Caio |

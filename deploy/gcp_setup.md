@@ -11,14 +11,16 @@ só se todas passarem, troca o conteúdo de todas numa **única transação** (`
 ficam). Qualquer falha: nada gravado em nenhuma tabela, execução marcada como falha, e-mail de alerta. Se `TABELAS`
 vier diferente da lista de produção (`TABELAS_PRODUCAO` no `job/main.py`), o log registra um aviso WARNING.
 
-## Estado da produção (implantado em 21/10/2026 pelo Caio, conta corporativa, Cloud Shell)
+## Estado da produção (implantado em 21/10/2026 pelo Caio, conta corporativa, Cloud Shell; atualizado em 22/10/2026)
 
 | Item | Estado |
 |---|---|
-| Tabela | `gold_monday.gld_agenciamento_2026_sla_movimentos` — criada às 18:1x (Brasília); 14.776 linhas, 3.095 projetos; 36 colunas com descrição; validação 16/16 |
-| Conta de serviço | `gold-agenciamento@gglobo-viu-dados-hdg-prd.iam.gserviceaccount.com`: `roles/bigquery.jobUser` no projeto; `roles/bigquery.dataViewer` em `silver_monday.slv_agenciamento_2026_itens` e `slv_agenciamento_2026_log`; `roles/bigquery.dataEditor` na tabela gold; `roles/run.invoker` no job |
-| Job | Cloud Run Job `gold-agenciamento` (`us-central1`), 1 CPU, 1 GiB, timeout 45 min, 1 nova tentativa; `TABELAS=gld_agenciamento_2026_sla_movimentos`, `EXIGIR_SILVER_DO_DIA=true`, `ESPERA_SILVER_MIN=30`, `TZ=America/Sao_Paulo` |
+| Tabelas | `gold_monday.gld_agenciamento_2026_sla_movimentos` (criada em 21/10/2026; 36 colunas; em 22/10/2026 19:08 Brasília: 14.838 linhas, 3.105 projetos, validação 19/19) e `gold_monday.gld_agenciamento_entrada_diaria` (criada em 22/10/2026 pelo `criar_…sql`, validação toda ok; 1ª carga pelo job às 19:08: 1.826 linhas, 2024-10-02 a 2026-10-21, 328 / 3.577 / 5.488 cards por ano). As duas gravadas na mesma transação |
+| Código | commit `75bbf3c` de `main` em `https://github.com/CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (clone no Cloud Shell em `~/PPD-GOLDEN-AGENCIAMENTO-MONDAY`; `gh` logado como `CBarrosoBRRJ`) |
+| Conta de serviço | `gold-agenciamento@gglobo-viu-dados-hdg-prd.iam.gserviceaccount.com`: `roles/bigquery.jobUser` no projeto; `roles/bigquery.dataViewer` em `silver_monday.slv_agenciamento_2026_itens`, `slv_agenciamento_2026_log`, `slv_agenciamento_2024_itens` e `slv_agenciamento_2025_itens`; `roles/bigquery.dataEditor` nas duas tabelas gold; `roles/run.invoker` no job |
+| Job | Cloud Run Job `gold-agenciamento` (`us-central1`), 1 CPU, 1 GiB, timeout 45 min, 1 nova tentativa; `TABELAS=gld_agenciamento_2026_sla_movimentos,gld_agenciamento_entrada_diaria`, `EXIGIR_SILVER_DO_DIA=true`, `ESPERA_SILVER_MIN=30`, `TZ=America/Sao_Paulo`; tudo ou nada (D16) |
 | Execuções de 21/10 | ensaio `gold-agenciamento-klklx` (16/16, nada gravado); 1ª carga `gold-agenciamento-bxhq2` (21:16 UTC, 14.776 linhas); teste do alerta `gold-agenciamento-6ts2n` (falha forçada, nada gravado, e-mail recebido) |
+| Execuções de 22/10 | 1ª automática (09:02, SLA); depois do deploy com as duas tabelas: ensaio `gold-agenciamento-rkwp9` (dry-run) e carga real `gold-agenciamento-x4sl4` (22:08 UTC), as duas concluídas com sucesso |
 | Agendamento | Cloud Scheduler `gold-agenciamento-diario`: `0 9 * * 1-5`, `America/Sao_Paulo` — 1ª execução automática 22/10/2026 09:00. Ordem do dia: bronze 08:00 → silver 08:30 → **gold 09:00** |
 | Alerta | política "gold-agenciamento falhou" (`alertPolicies/12083430023858162253`), canal de e-mail dos jobs bronze e silver |
 
@@ -70,10 +72,10 @@ gcloud run jobs execute gold-agenciamento --region=$REGION --wait --args=--dry-r
    `FONTES` no `job/main.py` — **só se for diária**: fonte de carga única (como `slv_agenciamento_2024_itens` e
    `_2025_itens`) nunca é "de hoje" e travaria o job.
 
-### Pendente: `gld_agenciamento_entrada_diaria` (aprovada em 22/10/2026; aguarda o Caio implantar)
+### Referência: implantação da `gld_agenciamento_entrada_diaria` (feita em 22/10/2026)
 
-Ficha: [docs/tabelas/gld_agenciamento_entrada_diaria.md](../docs/tabelas/gld_agenciamento_entrada_diaria.md). Rodar um
-bloco por vez no Cloud Shell, conferindo a saída antes do próximo.
+Ficha: [docs/tabelas/gld_agenciamento_entrada_diaria.md](../docs/tabelas/gld_agenciamento_entrada_diaria.md). Blocos
+rodados pelo Caio em 22/10/2026, um por vez (ficam aqui como modelo para a próxima tabela).
 
 ```bash
 # 0) no Cloud Shell: conta, login no GitHub (1ª vez) e clone do repositório
@@ -107,8 +109,8 @@ gcloud run jobs deploy gold-agenciamento --source . --region=$REGION --service-a
 gcloud run jobs execute gold-agenciamento --region=$REGION --wait --args=--dry-run
 ```
 
-O agendamento (`gold-agenciamento-diario`, seg–sex 09:00) não muda: a próxima execução já atualiza as duas tabelas.
-Depois, registrar em "Estado da produção" (acima), na ficha e na nota B016.
+O agendamento (`gold-agenciamento-diario`, seg–sex 09:00) não mudou: desde 23/10/2026 cada execução atualiza as duas
+tabelas.
 
 ## Implantação inicial (feita em 21/10/2026 — referência)
 
