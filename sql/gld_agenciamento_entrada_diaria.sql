@@ -5,7 +5,7 @@
 -- grupo_input × tipo_de_input × familia, só quando há entrada ou saída (sem linhas com zero: quem consome completa o
 -- calendário e faz os recortes).
 -- Só leitura (SELECT). A gravação é feita pelo deploy/ (CREATE OR REPLACE TABLE ... AS este SELECT).
--- Regras R1–R20: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
+-- Regras R1–R21: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
 
 WITH parametros AS (
   SELECT
@@ -101,8 +101,12 @@ itens AS (
   SELECT criado_em, data_de_saida, NULL, tipo_de_input, tipo_de_output, item_name, marca, status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2025_itens`
   UNION ALL
-  SELECT DATE(i.criado_em), i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca,
-    i.status
+  -- R21: cadastro retroativo (data_de_saida antes da criação e data_de_entrada até a data_de_saida) = data de entrada
+  -- é a data_de_entrada; a saída é validada contra ela, como para os outros cards
+  SELECT
+    IF(i.data_de_saida < DATE(i.criado_em) AND i.data_de_entrada <= i.data_de_saida, i.data_de_entrada,
+       DATE(i.criado_em)),
+    i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca, i.status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens` i
   LEFT JOIN aguardando_feedback af USING (projeto_id)
   WHERE i.state = 'active'
@@ -120,7 +124,8 @@ cards AS (
         AND d NOT IN UNNEST(f.dias))) AS dia,
     i.criado_em IS NULL AND i.data_de_saida IS NOT NULL AS estimada,
     -- R12–R14: saída = 1ª entrada em Aguardando Feedback pelo log (board 2026); sem ela, a data_de_saida. A que cair
-    -- antes da criação não vale; sem nenhuma das duas válida = NULL (fica fora; a validação conta no log)
+    -- antes da data de entrada do card (criação ou, no cadastro retroativo, data_de_entrada — R21) não vale; sem
+    -- nenhuma das duas válida = NULL (fica fora; a validação conta no log)
     CASE
       WHEN i.aguardando_feedback >= i.criado_em OR (i.aguardando_feedback IS NOT NULL AND i.criado_em IS NULL)
         THEN i.aguardando_feedback

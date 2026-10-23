@@ -48,6 +48,14 @@ bq query --use_legacy_sql=false --location=US < deploy/criar_gld_agenciamento_20
 bq add-iam-policy-binding --member="serviceAccount:$SA" --role="roles/bigquery.dataEditor" $PROJECT:gold_monday.gld_agenciamento_2026_sla_movimentos >/dev/null && echo ok
 ```
 
+   Se só mudaram **descrições** (tabela ou colunas), não recriar: o job grava por `DELETE` + `INSERT` e não toca em
+   descrições, então elas só mudam no BigQuery com o comando gerado (seguro repetir; não mexe em dados, esquema nem
+   permissões):
+
+```bash
+bq query --use_legacy_sql=false --location=US < deploy/descrever_gld_agenciamento_entrada_diaria.sql
+```
+
 4. Implantar e ensaiar. `TABELAS` traz **sempre a lista completa** de produção (a mesma de `TABELAS_PRODUCAO` no
    `job/main.py`); uma lista menor tira a tabela que faltar da atualização. A vírgula exige o separador `^@^`:
 

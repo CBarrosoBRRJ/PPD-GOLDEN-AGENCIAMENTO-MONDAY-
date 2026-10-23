@@ -20,7 +20,7 @@ docs/
   PRD.md                    o projeto: convenções, entregáveis, decisões, próximos passos, histórico
   fontes.md                 colunas das silvers, por assunto
   melhorias_processo.md     o que definir com a equipe e melhorar no processo e nos dados
-  tabelas/<tabela>.md       ficha de cada tabela gold (modelo: _modelo.md)
+  tabelas/<tabela>.md       PRD de cada tabela gold: pergunta, memória de cálculo, regras, validação, histórico (modelo: _modelo.md)
 sql/
   <tabela>.sql              SELECT de cada tabela gold (só leitura; fonte da verdade)
   esquemas/<tabela>.csv     colunas, tipos e descrições
@@ -28,7 +28,8 @@ sql/
   rascunhos/                variações ainda não aprovadas
 deploy/
   criar_<tabela>.sql        comando de criação — GERADO, não editar à mão
-  gcp_setup.md              implantação e operação do job no GCP (PowerShell)
+  descrever_<tabela>.sql    só as descrições (ALTER ... SET OPTIONS) — GERADO, não editar à mão
+  gcp_setup.md              implantação e operação do job no GCP (Cloud Shell)
 job/
   main.py                   job gold-agenciamento (Cloud Run Job)
 tools/
@@ -45,7 +46,8 @@ Dockerfile, requirements.txt, .gcloudignore   imagem do job
 4. Publicar:
    - **tabela nova**: rodar `deploy/criar_<tabela>.sql` uma vez (cria já com os dados) e a validação;
    - **tabela existente sem mudança de esquema**: só reimplantar o job; a próxima execução troca o conteúdo depois de
-     validar (não usar o `criar_…sql`, que publica antes de validar);
+     validar (não usar o `criar_…sql`, que publica antes de validar). Se mudaram **descrições**, rodar também
+     `deploy/descrever_<tabela>.sql` (gerado): o job não atualiza descrições;
    - **mudança de esquema**: recriar pelo `criar_…sql` e dar de novo as permissões (deploy/gcp_setup.md, passo 3).
 5. Registrar a mudança na ficha e no PRD.
 

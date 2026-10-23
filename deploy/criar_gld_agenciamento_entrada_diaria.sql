@@ -5,7 +5,7 @@
 
 CREATE OR REPLACE TABLE `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_entrada_diaria`
 (
-  data DATE OPTIONS(description="Dia (Brasília) da entrada (criado_em ou, sem ele, data_de_saida − 5 dias úteis) ou da saída (1ª ida a Aguardando Feedback) dos cards contados na linha; de 2024-10-01 até ontem. Com grupo_input, tipo_de_input e familia, forma a chave"),
+  data DATE OPTIONS(description="Dia (Brasília) da entrada (criado_em; no board 2026 com cadastro retroativo, a data_de_entrada; sem criado_em, data_de_saida − 5 dias úteis) ou da saída (1ª ida a Aguardando Feedback) dos cards contados na linha; de 2024-10-01 até ontem. Com grupo_input, tipo_de_input e familia, forma a chave"),
   dia_semana STRING OPTIONS(description="Dia da semana abreviado (seg, ter, qua, qui, sex, sáb, dom)"),
   ano INT64 OPTIONS(description="Ano da data (calendário)"),
   mes INT64 OPTIONS(description="Mês da data (1–12)"),
@@ -13,9 +13,9 @@ CREATE OR REPLACE TABLE `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_e
   grupo_input STRING OPTIONS(description="Mercado, Inbound, Proativo, Internos (ViU, Interna, Globo, ViU First, OTR) ou Sem tipo (vazio); Outros = tipo novo ainda sem grupo"),
   tipo_de_input STRING OPTIONS(description="Valor original da silver; vazio = Sem tipo"),
   familia STRING OPTIONS(description="Upfront, Levop, Mídia Kit, Análise, Defesa, Curadoria (pelo nome/marca), Card de Oportunidade (Levop), Curadoria Orçada, Defesas | Estudo Comercial (pelo tipo de output, com as variantes antigas de 2024/2025) ou Nenhuma; com mais de uma, vale a primeira desta ordem"),
-  quantidade INT64 OPTIONS(description="Cards que entraram no dia, com data real (criado_em)"),
+  quantidade INT64 OPTIONS(description="Cards que entraram no dia, com data real (criado_em; ou data_de_entrada no cadastro retroativo do board 2026: data_de_saida antes da criação e data_de_entrada até a data_de_saida)"),
   quantidade_estimada INT64 OPTIONS(description="Cards que entraram no dia, com data estimada (data_de_saida − 5 dias úteis, calendário de feriados da SLA)"),
-  quantidade_saida INT64 OPTIONS(description="Cards entregues ao cliente no dia: 1ª entrada em Aguardando Feedback pelo log (board 2026) ou, sem ela, data_de_saida; saída antes da criação fica fora"),
+  quantidade_saida INT64 OPTIONS(description="Cards entregues ao cliente no dia: 1ª entrada em Aguardando Feedback pelo log (board 2026) ou, sem ela, data_de_saida; saída antes da data de entrada do card (criação ou, no cadastro retroativo, data_de_entrada) fica fora"),
   entregue_no_mes INT64 OPTIONS(description="Dos cards que entraram na linha (quantidade + quantidade_estimada): com saída válida (a da quantidade_saida, até ontem) no mesmo mês-calendário da data de entrada. Foto do dia: muda a cada execução"),
   entregue_depois INT64 OPTIONS(description="Dos cards que entraram na linha: com saída válida em mês posterior ao da entrada. Foto do dia"),
   nao_seguiu INT64 OPTIONS(description="Dos cards que entraram na linha: sem saída válida e com status atual Declinado (qualquer variante), Standby ou Encerrado. Foto do dia"),
@@ -35,7 +35,7 @@ AS
 -- grupo_input × tipo_de_input × familia, só quando há entrada ou saída (sem linhas com zero: quem consome completa o
 -- calendário e faz os recortes).
 -- Só leitura (SELECT). A gravação é feita pelo deploy/ (CREATE OR REPLACE TABLE ... AS este SELECT).
--- Regras R1–R20: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
+-- Regras R1–R21: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
 
 WITH parametros AS (
   SELECT
@@ -131,8 +131,12 @@ itens AS (
   SELECT criado_em, data_de_saida, NULL, tipo_de_input, tipo_de_output, item_name, marca, status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2025_itens`
   UNION ALL
-  SELECT DATE(i.criado_em), i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca,
-    i.status
+  -- R21: cadastro retroativo (data_de_saida antes da criação e data_de_entrada até a data_de_saida) = data de entrada
+  -- é a data_de_entrada; a saída é validada contra ela, como para os outros cards
+  SELECT
+    IF(i.data_de_saida < DATE(i.criado_em) AND i.data_de_entrada <= i.data_de_saida, i.data_de_entrada,
+       DATE(i.criado_em)),
+    i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca, i.status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens` i
   LEFT JOIN aguardando_feedback af USING (projeto_id)
   WHERE i.state = 'active'
@@ -150,7 +154,8 @@ cards AS (
         AND d NOT IN UNNEST(f.dias))) AS dia,
     i.criado_em IS NULL AND i.data_de_saida IS NOT NULL AS estimada,
     -- R12–R14: saída = 1ª entrada em Aguardando Feedback pelo log (board 2026); sem ela, a data_de_saida. A que cair
-    -- antes da criação não vale; sem nenhuma das duas válida = NULL (fica fora; a validação conta no log)
+    -- antes da data de entrada do card (criação ou, no cadastro retroativo, data_de_entrada — R21) não vale; sem
+    -- nenhuma das duas válida = NULL (fica fora; a validação conta no log)
     CASE
       WHEN i.aguardando_feedback >= i.criado_em OR (i.aguardando_feedback IS NOT NULL AND i.criado_em IS NULL)
         THEN i.aguardando_feedback

@@ -4,6 +4,9 @@
 |---|---|
 | **Situação** | 🚀 em produção desde 21/10/2026 (1ª carga pelo job às 18:16 de Brasília; atualização seg–sex 09:00) |
 | **Pergunta** | quanto tempo cada projeto ficou em cada status, de quem era o relógio (equipe, cliente, standby) e onde o fluxo desviou |
+| **Por que existe** | o monday só mostra o status atual de cada card, e o log tem 178 mil eventos que ninguém lê à mão; não havia medida de quanto tempo cada projeto ficou com a equipe, com a marca ou parado, nem de onde o fluxo desvia (retrabalho, reabertura, fechamento sem entrega) |
+| **O que esperamos fazer** | Power BI de SLA por fase, status e responsável; cobrança de marca sem retorno (`alerta`); medir retrabalho, reabertura e trabalho fora do expediente; base para a meta de SLA da equipe (L1 em `docs/melhorias_processo.md`) e para o site de relatórios |
+| **Saída esperada** | uma linha por passagem de projeto por status (≈ 15 mil linhas, ≈ 3.100 projetos), com horas corridas e úteis, fase, em aberto, alerta e marcações do fluxo; recalculada por inteiro a cada execução; 19 verificações ok em toda carga |
 | **Uma linha por** | passagem de um projeto por um status — chave `projeto_id` + `passo` |
 | **Quem usa** | Power BI (e, no futuro, o site de relatórios) |
 | **Fontes** | `silver_monday.slv_agenciamento_2026_itens` (recorte e atributos) e `silver_monday.slv_agenciamento_2026_log` (mudanças de Status) |

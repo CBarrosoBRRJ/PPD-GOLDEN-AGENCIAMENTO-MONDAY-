@@ -4,7 +4,7 @@
 |---|---|
 | **Responsável** | Caio Barroso (dados) |
 | **Situação** | **Em produção**: `gld_agenciamento_2026_sla_movimentos` (desde 21/10/2026) e `gld_agenciamento_entrada_diaria` (desde 22/10/2026; saída e situação por safra desde 23/10/2026), atualizadas juntas pelo job `gold-agenciamento` (seg–sex 09:00, tudo ou nada); alerta por e-mail testado; código no GitHub (D17). Estado e operação: [`deploy/gcp_setup.md`](../deploy/gcp_setup.md) |
-| **Última revisão** | 21/10/2026 |
+| **Última revisão** | 23/10/2026 |
 | **Projeto GCP** | `gglobo-viu-dados-hdg-prd` (BigQuery `US`) |
 | **Dataset de destino** | `gold_monday` (variável `local_dataset_gold` no `.env`) |
 | **Projeto anterior** | `../PPD-SILVER-MONDAY` — gera as silvers de origem; PRD em `../PPD-SILVER-MONDAY/docs/PRD.md` |
@@ -28,7 +28,9 @@ bronze (monday) ──> silver (PPD-SILVER-MONDAY, job silver-monday 08:30)
                             │
                             ▼
                     gold (este projeto, job gold-agenciamento seg–sex 09:00)
-                      └─ gld_agenciamento_2026_sla_movimentos  ──> Power BI
+                      ├─ gld_agenciamento_2026_sla_movimentos  ──> Power BI
+                      └─ gld_agenciamento_entrada_diaria       ──> modelos de previsão, site de relatórios
+                         (lê também slv_agenciamento_2024_itens e _2025_itens, carga única)
 ```
 
 ## 2. Fontes (só leitura)
@@ -53,6 +55,7 @@ Colunas por assunto: [fontes.md](fontes.md). Chave comum: `projeto_id` (estável
 | # | Tabela | Uma linha por | Para que serve | Ficha | Situação |
 |---|---|---|---|---|---|
 | 1 | `gld_agenciamento_2026_sla_movimentos` | passagem de um projeto por um status (`projeto_id` + `passo`) | SLA por status e por fase (equipe, cliente, standby), em horas corridas e úteis; em aberto e alerta; retrabalho, reabertura, fechamento sem entrega; trabalho fora do expediente | [ficha](tabelas/gld_agenciamento_2026_sla_movimentos.md) | 🚀 em produção (21/10/2026) |
+| 2 | `gld_agenciamento_entrada_diaria` | data × grupo de input × tipo de input × família (só com entrada ou saída) | série diária de entradas (real e estimada) e saídas (1ª entrega ao cliente) e a situação hoje dos cards de cada safra (no mês, depois, não seguiu, em andamento); previsão de demanda e relatório da diretoria | [ficha](tabelas/gld_agenciamento_entrada_diaria.md) | 🚀 em produção (22/10/2026; saída e safra 23/10/2026) |
 | — | `gld_agenciamento_2026_sla_projetos` | projeto | totais de SLA por projeto (variação) | rascunho em `sql/rascunhos/` | 📝 ideia |
 
 Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · 🚀 criada no BigQuery.
@@ -65,7 +68,7 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
    - `sql/esquemas/<tabela>.csv` — colunas, tipos e descrições (vão para o BigQuery);
    - `deploy/criar_<tabela>.sql` — **gerado** por `python tools/gerar_deploy.py` (não editar à mão);
    - `sql/validacoes/<tabela>.sql` — verificações pós-criação (toda linha deve dar `ok = TRUE`);
-   - `docs/tabelas/<tabela>.md` — a ficha: grão, pipeline, colunas, regras, números, validação, limitações.
+   - `docs/tabelas/<tabela>.md` — a ficha, que é o **PRD da tabela** (modelo `_modelo.md`): pergunta, por que existe, o que esperamos fazer, saída esperada, como ler, pipeline (memória de cálculo por etapa e por coluna, com exemplo), colunas, regras com ID, motivo e data, log, validação com números de cada ensaio, pontos de atenção e histórico. Tudo o que foi decidido, feito e medido numa tabela fica na ficha dela, com data.
 3. **Regras determinísticas**, lidas só das silvers; não recalcular o que a silver já resolve (`projeto_id`, talento,
    marca, datas reais). Mudança de regra da silver é feita no `PPD-SILVER-MONDAY`.
 4. **Parâmetros** de negócio (limites, horários) ficam no CTE `parametros` no início do SELECT.
@@ -106,8 +109,9 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | D16 | 22/10/2026 | Job **tudo ou nada**: calcula e valida todas as tabelas de `TABELAS` na mesma sessão e só então troca o conteúdo de todas numa única transação; `TABELAS` diferente de `TABELAS_PRODUCAO` gera aviso WARNING; linha de validação com `esperado = 'aviso'` vira WARNING sem bloquear. Atualização de tabela existente sem mudança de esquema é pelo job (valida antes de publicar), não pelo `criar_…sql` | revisão do Codex: com duas tabelas, uma falha deixaria publicação parcial; um deploy com lista desatualizada tiraria uma tabela da atualização sem falhar |
 | D17 | 22/10/2026 | Código no GitHub: repositório privado `CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-`, branch `main`; deploy por `git clone` no Cloud Shell (zip e `tools/empacotar.py` retirados); `.env` fora do Git | fecha D8: duas tabelas prontas; histórico versionado e deploy reproduzível a partir de um commit |
 
-| D18 | 23/10/2026 | **Saída** na `gld_agenciamento_entrada_diaria` (coluna `quantidade_saida`, mesmo grão): 1ª ida a Aguardando Feedback pelo log no board 2026; `data_de_saida` em 2024/2025 e quando o log não tem a ida; saída antes da criação fica fora; fechados sem entrega não entram (R12–R15 da ficha) | a `data_de_saida` é regravada a cada reentrega e faria um mês fechado mudar; a 1ª ida pelo log é fixa. Uma tabela só para entrada e saída, sem mexer no Power BI |
+| D18 | 23/10/2026 | **Saída** na `gld_agenciamento_entrada_diaria` (coluna `quantidade_saida`, mesmo grão): 1ª ida a Aguardando Feedback pelo log no board 2026; `data_de_saida` em 2024/2025 e quando o log não tem a ida; saída antes da data de entrada do card fica fora (com a D20, essa data pode ser a `data_de_entrada`); fechados sem entrega não entram (R12–R15 da ficha) | a `data_de_saida` é regravada a cada reentrega e faria um mês fechado mudar; a 1ª ida pelo log é fixa. Uma tabela só para entrada e saída, sem mexer no Power BI |
 | D19 | 23/10/2026 | **Situação por safra** na `gld_agenciamento_entrada_diaria` (mesmo grão, sem tabela nova): 4 colunas INT64 sobre os cards que entraram na linha — `entregue_no_mes`, `entregue_depois` (saída válida da D18, até ontem, no mês da entrada ou depois), `nao_seguiu` (sem saída e status Declinado*, Standby ou Encerrado), `em_andamento` (o resto); somam `quantidade + quantidade_estimada`; **foto do dia** (R16–R20 da ficha) | relatório da diretoria por mês de entrada (entregue no mês, depois, não seguiu, em andamento) sem outra tabela; mesma saída da `quantidade_saida`, para os números conversarem |
+| D20 | 23/10/2026 | **Cadastro retroativo** na `gld_agenciamento_entrada_diaria` (R21): no board 2026, card com `data_de_saida` antes da criação e `data_de_entrada` até a `data_de_saida` entra pela `data_de_entrada`; a saída passa a valer. 154 cards em 23/10/2026 (93 criados em outubro, 79 em 07/10), 9 deles para out–dez/2025 | a equipe cadastrou em lote, em outubro, cards entregues meses antes; pelo `criado_em` outubro ficava inflado (600 → 508) e com ≈ 90 "não seguiu" falsos; os meses de origem recebem os cards. Sem coluna nova |
 
 ## 7. Próximos passos
 
@@ -145,3 +149,5 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | 23/10/2026 | **Implantado** pelo Caio (commit `0c10d28`): coluna `quantidade_saida` por `ALTER TABLE`, job reimplantado, ensaio `gsxdq` e carga real `t89q9` (entrada 2.333 linhas, 7.492 saídas; SLA 14.873) |
 | 23/10/2026 | Situação por safra na entrada diária (D19, R16–R20): 4 colunas novas; ensaio sem gravar com toda validação ok (soma em 100% das linhas, recontagem dia a dia 0 diferenças; entradas 328 / 3.577 / 5.529 e saídas 204 / 3.012 / 4.276 inalteradas; agosto/2026 = 640: 486 + 50 + 101 + 3) |
 | 23/10/2026 | **Implantada** pelo Caio em 23/10/2026 (Cloud Shell, commit `33d3107`): `ALTER TABLE ... ADD COLUMN` das 4 colunas, job reimplantado, ensaio `gold-agenciamento-r57ct` (dry-run, toda validação ok, sem WARNING) e carga real `gold-agenciamento-ksw7n` (15:05 Brasília: 2.333 linhas, 16 colunas; safra 6.051 no mês + 1.438 depois + 1.772 não seguiu + 173 em andamento = 9.434 entradas; SLA 14.873 linhas, 3.114 projetos) |
+| 23/10/2026 | Cadastro retroativo na entrada diária (D20, R21): ensaio sem gravar com toda validação ok (154 cards corrigidos; outubro/2026 600 → 508; entradas 328 / 3.586 / 5.520; saídas 204 / 3.020 / 4.391). Fichas passam a ser o PRD por tabela (pergunta, por quê, saída esperada, memória de cálculo); modelo `_modelo.md` atualizado |
+| 23/10/2026 | Auditoria do Codex sobre a R21 (só leitura; reproduziu os números): apto; 2 correções de texto e descrição aplicadas; `tools/gerar_deploy.py` passa a gerar `deploy/descrever_<tabela>.sql` (descrições sem recriar a tabela); pendência nova (reconciliação por grão completo) e decisão pendente (reentrega desfaz a R21) registradas no CLAUDE.md |

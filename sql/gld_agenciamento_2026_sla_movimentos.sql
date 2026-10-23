@@ -3,7 +3,7 @@
 -- passo, status, fase, entrada (chegou no status), saída (mudou para o próximo), tempo no status (corrido e útil),
 -- tempo em aberto, alerta e marcações do fluxo. Link do projeto no final.
 -- Só leitura (SELECT). A gravação é feita pelo deploy/ (CREATE OR REPLACE TABLE ... AS este SELECT).
--- Regras R1–R22: docs/tabelas/gld_agenciamento_2026_sla_movimentos.md. Colunas: sql/esquemas/.
+-- Regras R1–R23: docs/tabelas/gld_agenciamento_2026_sla_movimentos.md. Colunas: sql/esquemas/.
 
 WITH parametros AS (
   SELECT

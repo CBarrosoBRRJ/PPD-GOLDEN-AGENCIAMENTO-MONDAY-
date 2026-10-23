@@ -5,7 +5,7 @@
 -- input novo (grupo Outros). A recontagem nas silvers é independente do SELECT: acha a data estimada por dias úteis
 -- numerados em sequência.
 -- Referência por ano de 22/10/2026 (quantidade + quantidade_estimada): 328 (2024), 3.577 (2025), 5.488 (2026) —
--- informativa. A trava fixa é por board histórico (decisão do Caio, 22/10/2026): os cards dos boards 2024 e 2025 que
+-- informativa; a de 23/10/2026, com a R21, está no fim deste cabeçalho. A trava fixa é por board histórico (decisão do Caio, 22/10/2026): os cards dos boards 2024 e 2025 que
 -- têm data desde 2024-10-01 (327 e 3.578, sem o limite "até ontem") só mudam se a silver histórica for recarregada;
 -- um card do board 2026 que caia em 2025 não a afeta.
 -- A tabela é conferida contra a recontagem nas silvers dia a dia (reais, estimados e saídas separados).
@@ -14,8 +14,11 @@
 -- (decisão do Caio, 23/10/2026): saídas dos boards 2024 e 2025 desde 2024-10-01, sem o limite "até ontem": 213 e 3.005.
 -- Situação por safra (R16–R20): recontada aqui de forma independente (mês da saída × mês da entrada por FORMAT_DATE,
 -- status por LIKE) e conferida dia a dia; a soma das 4 colunas = quantidade + quantidade_estimada em toda linha.
--- Referência de 23/10/2026 (aviso, não bloqueia): entradas 328 / 3.577 / ≥ 5.529 e saídas 204 / 3.012 / ≥ 4.276
--- (2024 / 2025 / 2026); meses fechados de 2026 (jan–set) com no máximo 20 em andamento por mês.
+-- Cadastro retroativo (R21): no board 2026, card com data_de_saida antes da criação e data_de_entrada até a
+-- data_de_saida entra pela data_de_entrada (escrito de novo aqui, no CTE itens); a saída é validada contra a data
+-- corrigida. O log recebe, por ano de entrada, quantos cards foram corrigidos (154 em 23/10/2026).
+-- Referência de 23/10/2026, com a R21 (aviso, não bloqueia): entradas 328 / 3.586 / ≥ 5.520 e saídas
+-- 204 / 3.020 / ≥ 4.391 (2024 / 2025 / 2026); meses fechados de 2026 (jan–set) com no máximo 20 em andamento por mês.
 
 WITH t AS (
   SELECT * FROM `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_entrada_diaria`
@@ -99,16 +102,21 @@ primeiro_af AS (
 
 itens AS (
   SELECT '2024' AS board, FORMAT('2024-%s', item_id) AS chave, criado_em, data_de_saida, CAST(NULL AS DATE) AS af,
-    status
+    status, FALSE AS corrigida
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2024_itens`
   UNION ALL
-  SELECT '2025', FORMAT('2025-%s', item_id), criado_em, data_de_saida, NULL, status
+  SELECT '2025', FORMAT('2025-%s', item_id), criado_em, data_de_saida, NULL, status, FALSE
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2025_itens`
   UNION ALL
-  SELECT '2026', FORMAT('2026-%s', i.projeto_id), DATE(i.criado_em), i.data_de_saida, a.dia, i.status
-  FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens` i
-  LEFT JOIN primeiro_af a USING (projeto_id)
-  WHERE i.state = 'active'
+  -- R21, escrita de novo: cadastro retroativo entra pela data_de_entrada
+  SELECT '2026', FORMAT('2026-%s', projeto_id), IF(corrigida, data_de_entrada, criado), data_de_saida, af, status,
+    corrigida
+  FROM (
+    SELECT i.projeto_id, DATE(i.criado_em) AS criado, i.data_de_entrada, i.data_de_saida, a.dia AS af, i.status,
+      IFNULL(i.data_de_entrada <= i.data_de_saida AND i.data_de_saida < DATE(i.criado_em), FALSE) AS corrigida
+    FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens` i
+    LEFT JOIN primeiro_af a USING (projeto_id)
+    WHERE i.state = 'active')
 ),
 
 -- dias úteis numerados em sequência (seg–sex fora do calendário). Vai até a maior data_de_saida dos cards que
@@ -139,7 +147,7 @@ estimadas AS (
 
 silver AS (
   SELECT
-    i.board, i.status, COALESCE(i.criado_em, e.dia) AS dia, e.dia IS NOT NULL AS estimada,
+    i.board, i.status, COALESCE(i.criado_em, e.dia) AS dia, e.dia IS NOT NULL AS estimada, i.corrigida,
     -- R12–R14, escritas de novo: log se não for antes da criação; senão a coluna, com a mesma condição
     CASE
       WHEN i.af IS NOT NULL AND (i.criado_em IS NULL OR i.af >= i.criado_em) THEN i.af
@@ -148,7 +156,7 @@ silver AS (
     CASE
       WHEN i.af IS NOT NULL AND (i.criado_em IS NULL OR i.af >= i.criado_em) THEN 'log'
       WHEN i.data_de_saida IS NOT NULL AND (i.criado_em IS NULL OR i.data_de_saida >= i.criado_em) THEN 'coluna'
-      WHEN i.af IS NOT NULL OR i.data_de_saida IS NOT NULL THEN 'antes da criação'
+      WHEN i.af IS NOT NULL OR i.data_de_saida IS NOT NULL THEN 'antes da entrada'
       ELSE 'sem saída'
     END AS origem_saida,
     i.af IS NOT NULL AND i.data_de_saida IS NOT NULL AND i.af != i.data_de_saida AS log_difere_coluna,
@@ -243,7 +251,8 @@ situacao_por_ano AS (
     COUNTIF(situacao = 'em_andamento') AS em_andamento,
     COUNTIF(situacao = 'nao_seguiu' AND status = 'Encerrado') AS encerrado_sem_saida,
     COUNTIF(situacao = 'em_andamento'
-            AND dia < DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 60 DAY)) AS andamento_60d
+            AND dia < DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 60 DAY)) AS andamento_60d,
+    COUNTIF(corrigida) AS corrigidos
   FROM periodo
   GROUP BY ano
 ),
@@ -323,7 +332,7 @@ fontes AS (
      FROM (SELECT board, COUNT(*) AS n FROM silver WHERE dia IS NULL GROUP BY board)) AS sem_data,
     -- R14: saída antes da criação (sem correção pelo log), por board
     (SELECT STRING_AGG(FORMAT('%s: %d', board, n), ' | ' ORDER BY board)
-     FROM (SELECT board, COUNT(*) AS n FROM silver WHERE origem_saida = 'antes da criação' GROUP BY board))
+     FROM (SELECT board, COUNT(*) AS n FROM silver WHERE origem_saida = 'antes da entrada' GROUP BY board))
       AS saida_antes_criacao,
     -- de onde veio a saída dos cards do board 2026
     (SELECT STRING_AGG(FORMAT('%s: %d', origem_saida, n), ' | ' ORDER BY origem_saida)
@@ -369,12 +378,12 @@ FROM resumo r, fontes f, UNNEST([
     CAST(r.soma_situacao_errada AS STRING), '0', r.soma_situacao_errada = 0),
   ('situação = recontagem, dia a dia (dias diferentes)', (SELECT CAST(dias AS STRING) FROM divergencias_situacao), '0',
     (SELECT dias = 0 FROM divergencias_situacao)),
-  ('referência de 23/10/2026 por ano (entradas 328 | 3577 | ≥ 5529; saídas 204 | 3012 | ≥ 4276): anos diferentes',
+  ('referência de 23/10/2026, com a R21, por ano (entradas 328 | 3586 | ≥ 5520; saídas 204 | 3020 | ≥ 4391): anos diferentes',
     IFNULL((SELECT STRING_AGG(FORMAT('%d: entradas %d, saídas %d', ano, e, s), ' | ' ORDER BY ano)
             FROM (SELECT p.ano, p.real_t + p.est_t AS e, IFNULL(q.n_t, 0) AS s
                   FROM por_ano p LEFT JOIN saida_por_ano q USING (ano))
-            WHERE (ano = 2024 AND (e != 328 OR s != 204)) OR (ano = 2025 AND (e != 3577 OR s != 3012))
-               OR (ano = 2026 AND (e < 5529 OR s < 4276))), '0'),
+            WHERE (ano = 2024 AND (e != 328 OR s != 204)) OR (ano = 2025 AND (e != 3586 OR s != 3020))
+               OR (ano = 2026 AND (e < 5520 OR s < 4391))), '0'),
     'aviso', TRUE),
   ('2026 jan–set: meses com mais de 20 em andamento', IFNULL((
       SELECT STRING_AGG(FORMAT('%d: %d', mes, em_andamento), ' | ' ORDER BY mes)
@@ -385,6 +394,9 @@ FROM resumo r, fontes f, UNNEST([
   ('agosto/2026: total = no mês + depois + não seguiu + em andamento', (
       SELECT FORMAT('%d = %d + %d + %d + %d', total, no_mes, depois, nao_seguiu, em_andamento)
       FROM mes_2026 WHERE mes = 8), 'informativo', TRUE),
+  ('2026 por mês de entrada: total (não seguiu)', (
+      SELECT STRING_AGG(FORMAT('%d: %d (%d)', mes, total, nao_seguiu), ' | ' ORDER BY mes) FROM mes_2026),
+    'informativo', TRUE),
   ('situação por ano de entrada (no mês | depois | não seguiu | em andamento)', (
       SELECT STRING_AGG(FORMAT('%d: %d | %d | %d | %d', ano, no_mes, depois, nao_seguiu, em_andamento), ' · '
                         ORDER BY ano)
@@ -394,6 +406,9 @@ FROM resumo r, fontes f, UNNEST([
     'informativo', TRUE),
   ('em andamento com entrada há mais de 60 dias, por ano de entrada', (
       SELECT STRING_AGG(FORMAT('%d: %d', ano, andamento_60d), ' | ' ORDER BY ano) FROM situacao_por_ano),
+    'informativo', TRUE),
+  ('cadastro retroativo: cards com a data de entrada corrigida para a data_de_entrada, por ano de entrada (R21)', (
+      SELECT STRING_AGG(FORMAT('%d: %d', ano, corrigidos), ' | ' ORDER BY ano) FROM situacao_por_ano),
     'informativo', TRUE),
   ('totais por ano (entradas)',
     FORMAT('2024: %d | 2025: %d | 2026: %d', r.total_2024, r.total_2025, r.total_2026), 'informativo', TRUE),
@@ -407,9 +422,9 @@ FROM resumo r, fontes f, UNNEST([
   ('saídas por ano', (SELECT STRING_AGG(FORMAT('%d: %d', ano, n_t), ' | ' ORDER BY ano) FROM saida_por_ano),
     'informativo', TRUE),
   ('linhas só com saída (sem entrada no dia)', CAST(r.linhas_so_saida AS STRING), 'informativo', TRUE),
-  ('fora: saída antes da criação, sem correção pelo log (por board, R14)', IFNULL(f.saida_antes_criacao, '0'),
+  ('fora: saída antes da data de entrada do card, sem correção pelo log (por board, R14; R21)', IFNULL(f.saida_antes_criacao, '0'),
     'informativo', TRUE),
-  ('origem da saída, board 2026 (antes da criação | coluna | log | sem saída)', f.origem_saida_2026, 'informativo', TRUE),
+  ('origem da saída, board 2026 (antes da entrada | coluna | log | sem saída)', f.origem_saida_2026, 'informativo', TRUE),
   ('cards com 1ª ida a Aguardando Feedback diferente da data_de_saida (reentregas e edições)',
     CAST(f.log_difere_coluna AS STRING), 'informativo', TRUE),
   ('data_de_saida regravada depois da 1ª entrega (reenvio), por board; a saída fica na 1ª (R12)', f.saida_regravada,

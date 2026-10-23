@@ -1,9 +1,14 @@
-"""Gera o comando de criação de uma tabela gold a partir do SELECT (sql/) e do esquema (sql/esquemas/).
+"""Gera os comandos de uma tabela gold a partir do SELECT (sql/) e do esquema (sql/esquemas/).
 
 Uso: python tools/gerar_deploy.py gld_agenciamento_2026_sla_movimentos
-Saída: deploy/criar_<tabela>.sql (CREATE OR REPLACE TABLE ... (colunas com descrição) ... AS <SELECT>).
+Saída:
+  deploy/criar_<tabela>.sql     CREATE OR REPLACE TABLE ... (colunas com descrição) ... AS <SELECT> — tabela nova
+                                ou mudança de esquema (apaga a permissão da tabela: dar de novo).
+  deploy/descrever_<tabela>.sql ALTER TABLE / ALTER COLUMN ... SET OPTIONS(description) — só atualiza as descrições
+                                da tabela e das colunas, sem mexer em dados, esquema ou permissões (o job grava por
+                                DELETE + INSERT e não toca em descrições).
 
-O SELECT e o esquema são a única fonte; o arquivo de deploy é gerado e não deve ser editado à mão.
+O SELECT e o esquema são a única fonte; os arquivos de deploy são gerados e não devem ser editados à mão.
 """
 
 import csv
@@ -86,7 +91,33 @@ def gerar(tabela: str) -> Path:
     return destino
 
 
+def gerar_descricoes(tabela: str) -> Path:
+    conf = TABELAS[tabela]
+    with (RAIZ / "sql" / "esquemas" / f"{tabela}.csv").open(encoding="utf-8", newline="") as f:
+        colunas = list(csv.DictReader(f))
+
+    nome = f"`{PROJETO_GCP}.{DATASET}.{tabela}`"
+    comandos = [f"ALTER TABLE {nome} SET OPTIONS(description={texto(conf['descricao'])});"]
+    comandos += [
+        f"ALTER TABLE {nome} ALTER COLUMN {c['coluna']} SET OPTIONS(description={texto(c['descricao'])});"
+        for c in colunas
+    ]
+    ddl = (
+        f"-- GERADO por tools/gerar_deploy.py a partir de sql/esquemas/{tabela}.csv.\n"
+        "-- Não editar à mão: altere o esquema e gere de novo.\n"
+        f"-- Executar no BigQuery com a conta corporativa, no projeto {PROJETO_GCP} (região US).\n"
+        "-- Só atualiza as descrições da tabela e das colunas: não mexe em dados, esquema nem permissões. Seguro\n"
+        "-- repetir. Toda coluna do esquema precisa existir na tabela (coluna nova é por ALTER TABLE ... ADD COLUMN).\n\n"
+        + "\n".join(comandos)
+        + "\n"
+    )
+    destino = RAIZ / "deploy" / f"descrever_{tabela}.sql"
+    destino.write_text(ddl, encoding="utf-8")
+    return destino
+
+
 if __name__ == "__main__":
     nomes = sys.argv[1:] or list(TABELAS)
     for nome in nomes:
         print(gerar(nome).relative_to(RAIZ))
+        print(gerar_descricoes(nome).relative_to(RAIZ))
