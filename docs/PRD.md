@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Responsável** | Caio Barroso (dados) |
-| **Situação** | **Em produção**: `gld_agenciamento_2026_sla_movimentos` (desde 21/10/2026) e `gld_agenciamento_entrada_diaria` (desde 22/10/2026), atualizadas juntas pelo job `gold-agenciamento` (seg–sex 09:00, tudo ou nada); alerta por e-mail testado; código no GitHub (D17). Estado e operação: [`deploy/gcp_setup.md`](../deploy/gcp_setup.md) |
+| **Situação** | **Em produção**: `gld_agenciamento_2026_sla_movimentos` (desde 21/10/2026) e `gld_agenciamento_entrada_diaria` (desde 22/10/2026; saída e situação por safra desde 23/10/2026), atualizadas juntas pelo job `gold-agenciamento` (seg–sex 09:00, tudo ou nada); alerta por e-mail testado; código no GitHub (D17). Estado e operação: [`deploy/gcp_setup.md`](../deploy/gcp_setup.md) |
 | **Última revisão** | 21/10/2026 |
 | **Projeto GCP** | `gglobo-viu-dados-hdg-prd` (BigQuery `US`) |
 | **Dataset de destino** | `gold_monday` (variável `local_dataset_gold` no `.env`) |
@@ -144,3 +144,4 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | 23/10/2026 | Saída na entrada diária (D18) construída com o Caio e aprovada (regra B: 1ª entrega); ensaio sem gravar com toda validação ok |
 | 23/10/2026 | **Implantado** pelo Caio (commit `0c10d28`): coluna `quantidade_saida` por `ALTER TABLE`, job reimplantado, ensaio `gsxdq` e carga real `t89q9` (entrada 2.333 linhas, 7.492 saídas; SLA 14.873) |
 | 23/10/2026 | Situação por safra na entrada diária (D19, R16–R20): 4 colunas novas; ensaio sem gravar com toda validação ok (soma em 100% das linhas, recontagem dia a dia 0 diferenças; entradas 328 / 3.577 / 5.529 e saídas 204 / 3.012 / 4.276 inalteradas; agosto/2026 = 640: 486 + 50 + 101 + 3) |
+| 23/10/2026 | **Implantada** pelo Caio em 23/10/2026 (Cloud Shell, commit `33d3107`): `ALTER TABLE ... ADD COLUMN` das 4 colunas, job reimplantado, ensaio `gold-agenciamento-r57ct` (dry-run, toda validação ok, sem WARNING) e carga real `gold-agenciamento-ksw7n` (15:05 Brasília: 2.333 linhas, 16 colunas; safra 6.051 no mês + 1.438 depois + 1.772 não seguiu + 173 em andamento = 9.434 entradas; SLA 14.873 linhas, 3.114 projetos) |
