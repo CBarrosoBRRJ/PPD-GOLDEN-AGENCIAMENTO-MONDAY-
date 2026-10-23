@@ -1,5 +1,5 @@
 coluna,tipo,descricao
-data,DATE,"Dia de entrada do card (Brasília): criado_em ou, sem ele, data_de_saida − 5 dias úteis; de 2024-10-01 até ontem. Com grupo_input, tipo_de_input e familia, forma a chave"
+data,DATE,"Dia (Brasília) da entrada (criado_em ou, sem ele, data_de_saida − 5 dias úteis) ou da saída (1ª ida a Aguardando Feedback) dos cards contados na linha; de 2024-10-01 até ontem. Com grupo_input, tipo_de_input e familia, forma a chave"
 dia_semana,STRING,"Dia da semana abreviado (seg, ter, qua, qui, sex, sáb, dom)"
 ano,INT64,"Ano da data (calendário)"
 mes,INT64,"Mês da data (1–12)"
@@ -7,6 +7,7 @@ inicio_semana,DATE,"Segunda-feira que inicia a semana da data (agrupar por seman
 grupo_input,STRING,"Mercado, Inbound, Proativo, Internos (ViU, Interna, Globo, ViU First, OTR) ou Sem tipo (vazio); Outros = tipo novo ainda sem grupo"
 tipo_de_input,STRING,"Valor original da silver; vazio = Sem tipo"
 familia,STRING,"Upfront, Levop, Mídia Kit, Análise, Defesa, Curadoria (pelo nome/marca), Card de Oportunidade (Levop), Curadoria Orçada, Defesas | Estudo Comercial (pelo tipo de output, com as variantes antigas de 2024/2025) ou Nenhuma; com mais de uma, vale a primeira desta ordem"
-quantidade,INT64,"Cards com data real (criado_em)"
-quantidade_estimada,INT64,"Cards com data estimada (data_de_saida − 5 dias úteis, calendário de feriados da SLA)"
+quantidade,INT64,"Cards que entraram no dia, com data real (criado_em)"
+quantidade_estimada,INT64,"Cards que entraram no dia, com data estimada (data_de_saida − 5 dias úteis, calendário de feriados da SLA)"
+quantidade_saida,INT64,"Cards entregues ao cliente no dia: 1ª entrada em Aguardando Feedback pelo log (board 2026) ou, sem ela, data_de_saida; saída antes da criação fica fora"
 _processado_em,TIMESTAMP,"Momento da execução"

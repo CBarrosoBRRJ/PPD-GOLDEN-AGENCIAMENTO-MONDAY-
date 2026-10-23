@@ -106,6 +106,8 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | D16 | 22/10/2026 | Job **tudo ou nada**: calcula e valida todas as tabelas de `TABELAS` na mesma sessão e só então troca o conteúdo de todas numa única transação; `TABELAS` diferente de `TABELAS_PRODUCAO` gera aviso WARNING; linha de validação com `esperado = 'aviso'` vira WARNING sem bloquear. Atualização de tabela existente sem mudança de esquema é pelo job (valida antes de publicar), não pelo `criar_…sql` | revisão do Codex: com duas tabelas, uma falha deixaria publicação parcial; um deploy com lista desatualizada tiraria uma tabela da atualização sem falhar |
 | D17 | 22/10/2026 | Código no GitHub: repositório privado `CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-`, branch `main`; deploy por `git clone` no Cloud Shell (zip e `tools/empacotar.py` retirados); `.env` fora do Git | fecha D8: duas tabelas prontas; histórico versionado e deploy reproduzível a partir de um commit |
 
+| D18 | 23/10/2026 | **Saída** na `gld_agenciamento_entrada_diaria` (coluna `quantidade_saida`, mesmo grão): 1ª ida a Aguardando Feedback pelo log no board 2026; `data_de_saida` em 2024/2025 e quando o log não tem a ida; saída antes da criação fica fora; fechados sem entrega não entram (R12–R15 da ficha) | a `data_de_saida` é regravada a cada reentrega e faria um mês fechado mudar; a 1ª ida pelo log é fixa. Uma tabela só para entrada e saída, sem mexer no Power BI |
+
 ## 7. Próximos passos
 
 | # | Passo | Quem | Situação |
@@ -138,3 +140,4 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | 22/10/2026 | Entrada diária **aprovada** (prioridade de famílias, de-para de outputs antigos, aviso de tipos novos, colunas de calendário). Revisão do Codex (8 achados, todos conferidos; nenhum ocorria nos dados): job tudo ou nada (D16); SLA com R23 e R10 antes de R9/R22 (histórico idêntico ao de produção); validações mais fortes nas duas tabelas; trava por board histórico. 2ª revisão do Codex: apto para implantar; ajustes finais (teto do calendário da validação, trava sem "ontem", ROLLBACK explícito no job, textos). Pendentes: A7 (marcador de lote da silver) e melhorias P1/P2 |
 | 22/10/2026 | Repositório no GitHub (D17): primeiro commit `75bbf3c` com as duas tabelas; deploy passa a `git clone`; zip e `tools/empacotar.py` retirados |
 | 22/10/2026 | **Implantado** pelo Caio: `gld_agenciamento_entrada_diaria` criada e validada; permissões; job tudo-ou-nada com as duas tabelas; ensaio e carga real (19:08 Brasília: SLA 14.838 linhas, entrada 1.826). Agendamento seg–sex 09:00 passa a atualizar as duas |
+| 23/10/2026 | Saída na entrada diária (D18) construída com o Caio; ensaio sem gravar com toda validação ok; aguarda aprovação e implantação (coluna nova) |

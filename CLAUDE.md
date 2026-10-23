@@ -19,7 +19,7 @@ bronze 08:00 (PPD-BRONZE-MONDAY) → silver 08:30 (PPD-SILVER-MONDAY) → gold 0
 | Item | Estado |
 |---|---|
 | `gold_monday.gld_agenciamento_2026_sla_movimentos` | 🚀 **em produção** desde 21/10/2026 — uma linha por passagem de um projeto por um status; 36 colunas; regras R1–R23; 14.838 linhas / 3.105 projetos em 22/10; validação 19/19. **Concluída** |
-| `gold_monday.gld_agenciamento_entrada_diaria` | 🚀 **em produção** desde 22/10/2026 — cards criados por data × grupo de input × tipo × família (boards 2024–2026), data estimada separada; 1.826 linhas na 1ª carga; validação toda ok. **Concluída** (para previsão de demanda; análises ficam no consumidor) |
+| `gold_monday.gld_agenciamento_entrada_diaria` | 🚀 **em produção** desde 22/10/2026 — cards criados por data × grupo de input × tipo × família (boards 2024–2026), data estimada separada; 1.826 linhas na 1ª carga; validação toda ok. **Saída** (`quantidade_saida`, R12–R15, D18) construída em 23/10/2026 e validada sem gravar — **aguarda aprovação e implantação** (coluna nova) |
 | Job `gold-agenciamento` | Cloud Run Job (`us-central1`) + Scheduler `gold-agenciamento-diario` **seg–sex 09:00** (Brasília); atualiza as duas tabelas **tudo ou nada** (D16); código do commit `75bbf3c` |
 | Alerta | política "gold-agenciamento falhou" → e-mail (testado em 21/10) |
 | Git / GitHub | repositório privado `https://github.com/CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (criado em 22/10/2026, branch `main`). Deploy por `git clone` no Cloud Shell; o `.env` fica fora. Commit e push só quando o Caio pedir |

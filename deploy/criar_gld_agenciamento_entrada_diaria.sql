@@ -5,7 +5,7 @@
 
 CREATE OR REPLACE TABLE `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_entrada_diaria`
 (
-  data DATE OPTIONS(description="Dia de entrada do card (Brasília): criado_em ou, sem ele, data_de_saida − 5 dias úteis; de 2024-10-01 até ontem. Com grupo_input, tipo_de_input e familia, forma a chave"),
+  data DATE OPTIONS(description="Dia (Brasília) da entrada (criado_em ou, sem ele, data_de_saida − 5 dias úteis) ou da saída (1ª ida a Aguardando Feedback) dos cards contados na linha; de 2024-10-01 até ontem. Com grupo_input, tipo_de_input e familia, forma a chave"),
   dia_semana STRING OPTIONS(description="Dia da semana abreviado (seg, ter, qua, qui, sex, sáb, dom)"),
   ano INT64 OPTIONS(description="Ano da data (calendário)"),
   mes INT64 OPTIONS(description="Mês da data (1–12)"),
@@ -13,22 +13,24 @@ CREATE OR REPLACE TABLE `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_e
   grupo_input STRING OPTIONS(description="Mercado, Inbound, Proativo, Internos (ViU, Interna, Globo, ViU First, OTR) ou Sem tipo (vazio); Outros = tipo novo ainda sem grupo"),
   tipo_de_input STRING OPTIONS(description="Valor original da silver; vazio = Sem tipo"),
   familia STRING OPTIONS(description="Upfront, Levop, Mídia Kit, Análise, Defesa, Curadoria (pelo nome/marca), Card de Oportunidade (Levop), Curadoria Orçada, Defesas | Estudo Comercial (pelo tipo de output, com as variantes antigas de 2024/2025) ou Nenhuma; com mais de uma, vale a primeira desta ordem"),
-  quantidade INT64 OPTIONS(description="Cards com data real (criado_em)"),
-  quantidade_estimada INT64 OPTIONS(description="Cards com data estimada (data_de_saida − 5 dias úteis, calendário de feriados da SLA)"),
+  quantidade INT64 OPTIONS(description="Cards que entraram no dia, com data real (criado_em)"),
+  quantidade_estimada INT64 OPTIONS(description="Cards que entraram no dia, com data estimada (data_de_saida − 5 dias úteis, calendário de feriados da SLA)"),
+  quantidade_saida INT64 OPTIONS(description="Cards entregues ao cliente no dia: 1ª entrada em Aguardando Feedback pelo log (board 2026) ou, sem ela, data_de_saida; saída antes da criação fica fora"),
   _processado_em TIMESTAMP OPTIONS(description="Momento da execução")
 )
 CLUSTER BY data, grupo_input
 OPTIONS(
-  description="Entrada diária do Agenciamento: cards criados nos boards 2024, 2025 e 2026 por dia, grupo de input, tipo de input e família (data real em quantidade, estimada em quantidade_estimada), de 2024-10-01 até ontem, só combinações com card. Para tendência e previsão de demanda; recortes na leitura. Recriada a cada execução. Regras: docs/tabelas/gld_agenciamento_entrada_diaria.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)",
+  description="Entrada e saída diárias do Agenciamento: cards criados (data real em quantidade, estimada em quantidade_estimada) e entregues ao cliente (quantidade_saida: 1ª ida a Aguardando Feedback) nos boards 2024, 2025 e 2026 por dia, grupo de input, tipo de input e família, de 2024-10-01 até ontem, só combinações com entrada ou saída. Para tendência e previsão de demanda; recortes na leitura. Recriada a cada execução. Regras: docs/tabelas/gld_agenciamento_entrada_diaria.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)",
   labels=[("projeto", "ppd-golden-agenciamento-monday"), ("camada", "gold"), ("board", "agenciamento-2024-2026"), ("origem", "monday"), ("tipo", "entrada-diaria")]
 )
 AS
 -- gold_monday.gld_agenciamento_entrada_diaria
--- Contagem diária de cards criados nos boards de Agenciamento 2024, 2025 e 2026, por grupo de input e família, para
--- análise de tendência e previsão de demanda. Uma linha por data × grupo_input × tipo_de_input × familia, só quando há
--- card (sem linhas com zero: quem consome completa o calendário e faz os recortes).
+-- Contagem diária de cards criados (entrada) e entregues ao cliente (saída) nos boards de Agenciamento 2024, 2025 e
+-- 2026, por grupo de input e família, para análise de tendência e previsão de demanda. Uma linha por data ×
+-- grupo_input × tipo_de_input × familia, só quando há entrada ou saída (sem linhas com zero: quem consome completa o
+-- calendário e faz os recortes).
 -- Só leitura (SELECT). A gravação é feita pelo deploy/ (CREATE OR REPLACE TABLE ... AS este SELECT).
--- Regras R1–R11: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
+-- Regras R1–R15: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
 
 WITH parametros AS (
   SELECT
@@ -105,18 +107,29 @@ feriados AS (
   )
 ),
 
+-- R12: 1ª entrada em Aguardando Feedback de cada projeto do board 2026, pelo log (a data_de_saida é regravada pela
+-- automação a cada nova ida ao cliente; o log guarda a primeira, que não muda depois)
+aguardando_feedback AS (
+  SELECT projeto_id, MIN(DATE(alterado_em)) AS dia
+  FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_log`
+  WHERE campo_alterado = 'Status' AND valor_depois = 'Aguardando Feedback'
+  GROUP BY projeto_id
+),
+
 -- os três boards no mesmo formato. R1: data real = criado_em (2024/2025) ou DATE(criado_em) (2026); nunca o
--- created_at de 2024/2025 (data da importação). R5: 2026 só state = 'active'
+-- created_at de 2024/2025 (data da importação). R5: 2026 só state = 'active'. Os boards 2024 e 2025 não têm log
 itens AS (
-  SELECT criado_em, data_de_saida, tipo_de_input, tipo_de_output, item_name AS nome, marca
+  SELECT criado_em, data_de_saida, CAST(NULL AS DATE) AS aguardando_feedback, tipo_de_input, tipo_de_output,
+    item_name AS nome, marca
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2024_itens`
   UNION ALL
-  SELECT criado_em, data_de_saida, tipo_de_input, tipo_de_output, item_name, marca
+  SELECT criado_em, data_de_saida, NULL, tipo_de_input, tipo_de_output, item_name, marca
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2025_itens`
   UNION ALL
-  SELECT DATE(criado_em), data_de_saida, tipo_de_input, tipo_de_output, nome_projeto, marca
-  FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens`
-  WHERE state = 'active'
+  SELECT DATE(i.criado_em), i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca
+  FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens` i
+  LEFT JOIN aguardando_feedback af USING (projeto_id)
+  WHERE i.state = 'active'
 ),
 
 cards AS (
@@ -130,6 +143,13 @@ cards AS (
       WHERE EXTRACT(DAYOFWEEK FROM d) BETWEEN 2 AND 6
         AND d NOT IN UNNEST(f.dias))) AS dia,
     i.criado_em IS NULL AND i.data_de_saida IS NOT NULL AS estimada,
+    -- R12–R14: saída = 1ª entrada em Aguardando Feedback pelo log (board 2026); sem ela, a data_de_saida. A que cair
+    -- antes da criação não vale; sem nenhuma das duas válida = NULL (fica fora; a validação conta no log)
+    CASE
+      WHEN i.aguardando_feedback >= i.criado_em OR (i.aguardando_feedback IS NOT NULL AND i.criado_em IS NULL)
+        THEN i.aguardando_feedback
+      WHEN i.data_de_saida >= i.criado_em OR i.criado_em IS NULL THEN i.data_de_saida
+    END AS saida,
     i.tipo_de_input,
     i.tipo_de_output,
     -- R8: texto de busca como na silver: sem acento e minúsculo
@@ -144,6 +164,7 @@ classificados AS (
   SELECT
     c.dia,
     c.estimada,
+    c.saida,
     -- R7: grupo do input; vazio = Sem tipo; tipo novo = Outros (vai ao log pela validação)
     CASE
       WHEN c.tipo_de_input IS NULL THEN 'Sem tipo'
@@ -173,25 +194,38 @@ classificados AS (
       ELSE 'Nenhuma'
     END AS familia
   FROM cards c
+),
+
+-- cada card vale até dois eventos: a entrada na data dele e a saída na data dela, cada um contado só se cair de
+-- 2024-10-01 até ontem (R2 + R4 + R15; R6: conta pela data, não pelo board). O grupo e a família são os do card
+eventos AS (
+  SELECT c.dia AS data, c.grupo_input, c.tipo_de_input, c.familia,
+    IF(c.estimada, 0, 1) AS real, IF(c.estimada, 1, 0) AS estimada, 0 AS saida
+  FROM classificados c
   CROSS JOIN parametros pr
-  -- R2 + R4: sem data fica fora; só de 2024-10-01 até ontem (R6: conta pela data, não pelo board)
   WHERE c.dia BETWEEN pr.inicio AND pr.fim
+  UNION ALL
+  SELECT c.saida, c.grupo_input, c.tipo_de_input, c.familia, 0, 0, 1
+  FROM classificados c
+  CROSS JOIN parametros pr
+  WHERE c.saida BETWEEN pr.inicio AND pr.fim
 )
 
--- R10: só as combinações com card; sem linhas com zero
+-- R10 + R15: só as combinações com entrada ou saída; sem linhas com zero
 SELECT
-  dia AS data,
+  data,
   -- R11: dia da semana abreviado em português, ano, mês e a segunda-feira que inicia a semana
-  ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][OFFSET(EXTRACT(DAYOFWEEK FROM dia) - 1)] AS dia_semana,
-  EXTRACT(YEAR FROM dia) AS ano,
-  EXTRACT(MONTH FROM dia) AS mes,
-  DATE_TRUNC(dia, ISOWEEK) AS inicio_semana,
+  ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][OFFSET(EXTRACT(DAYOFWEEK FROM data) - 1)] AS dia_semana,
+  EXTRACT(YEAR FROM data) AS ano,
+  EXTRACT(MONTH FROM data) AS mes,
+  DATE_TRUNC(data, ISOWEEK) AS inicio_semana,
   grupo_input,
   tipo_de_input,
   familia,
-  COUNTIF(NOT estimada) AS quantidade,
-  COUNTIF(estimada) AS quantidade_estimada,
+  SUM(real) AS quantidade,
+  SUM(estimada) AS quantidade_estimada,
+  SUM(saida) AS quantidade_saida,
   CURRENT_TIMESTAMP() AS _processado_em
-FROM classificados
+FROM eventos
 GROUP BY data, dia_semana, ano, mes, inicio_semana, grupo_input, tipo_de_input, familia
 ;
