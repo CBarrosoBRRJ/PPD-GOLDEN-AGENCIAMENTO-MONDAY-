@@ -10,4 +10,8 @@ familia,STRING,"Upfront, Levop, Mídia Kit, Análise, Defesa, Curadoria (pelo no
 quantidade,INT64,"Cards que entraram no dia, com data real (criado_em)"
 quantidade_estimada,INT64,"Cards que entraram no dia, com data estimada (data_de_saida − 5 dias úteis, calendário de feriados da SLA)"
 quantidade_saida,INT64,"Cards entregues ao cliente no dia: 1ª entrada em Aguardando Feedback pelo log (board 2026) ou, sem ela, data_de_saida; saída antes da criação fica fora"
+entregue_no_mes,INT64,"Dos cards que entraram na linha (quantidade + quantidade_estimada): com saída válida (a da quantidade_saida, até ontem) no mesmo mês-calendário da data de entrada. Foto do dia: muda a cada execução"
+entregue_depois,INT64,"Dos cards que entraram na linha: com saída válida em mês posterior ao da entrada. Foto do dia"
+nao_seguiu,INT64,"Dos cards que entraram na linha: sem saída válida e com status atual Declinado (qualquer variante), Standby ou Encerrado. Foto do dia"
+em_andamento,INT64,"Dos cards que entraram na linha: os demais (Entrada, Em elaboração, Em revisão, Aguardando Feedback sem saída, status vazio). Foto do dia. As 4 colunas somam quantidade + quantidade_estimada"
 _processado_em,TIMESTAMP,"Momento da execução"

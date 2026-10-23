@@ -12,6 +12,10 @@
 -- Saída (R12–R14): recontada aqui de forma independente — a 1ª ida a Aguardando Feedback pela ordem dos eventos do log
 -- (ROW_NUMBER por alterado_em e log_id), não pelo MIN do SELECT. A trava fixa das saídas também é por board histórico
 -- (decisão do Caio, 23/10/2026): saídas dos boards 2024 e 2025 desde 2024-10-01, sem o limite "até ontem": 213 e 3.005.
+-- Situação por safra (R16–R20): recontada aqui de forma independente (mês da saída × mês da entrada por FORMAT_DATE,
+-- status por LIKE) e conferida dia a dia; a soma das 4 colunas = quantidade + quantidade_estimada em toda linha.
+-- Referência de 23/10/2026 (aviso, não bloqueia): entradas 328 / 3.577 / ≥ 5.529 e saídas 204 / 3.012 / ≥ 4.276
+-- (2024 / 2025 / 2026); meses fechados de 2026 (jan–set) com no máximo 20 em andamento por mês.
 
 WITH t AS (
   SELECT * FROM `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_entrada_diaria`
@@ -154,8 +158,18 @@ silver AS (
   LEFT JOIN estimadas e USING (chave)
 ),
 
+-- R16–R19, escritas de novo: situação hoje de cada card que entrou no período, pela safra (mês da entrada). A saída
+-- só conta até ontem, como na quantidade_saida
 periodo AS (
-  SELECT * FROM silver
+  SELECT
+    *,
+    CASE
+      WHEN saida IS NOT NULL AND saida < CURRENT_DATE('America/Sao_Paulo')
+        THEN IF(FORMAT_DATE('%Y%m', saida) > FORMAT_DATE('%Y%m', dia), 'depois', 'no_mes')
+      WHEN status LIKE 'Declinado%' OR status = 'Standby' OR status = 'Encerrado' THEN 'nao_seguiu'
+      ELSE 'em_andamento'
+    END AS situacao
+  FROM silver
   WHERE dia BETWEEN DATE '2024-10-01' AND DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 1 DAY)
 ),
 
@@ -204,6 +218,45 @@ divergencias AS (
     ON COALESCE(a.data, b.dia) = c.saida
 ),
 
+-- dias em que alguma das 4 colunas de situação difere da recontagem
+divergencias_situacao AS (
+  SELECT COUNTIF(IFNULL(a.no_mes, 0) != IFNULL(b.no_mes, 0) OR IFNULL(a.depois, 0) != IFNULL(b.depois, 0)
+                 OR IFNULL(a.nao_seguiu, 0) != IFNULL(b.nao_seguiu, 0)
+                 OR IFNULL(a.em_andamento, 0) != IFNULL(b.em_andamento, 0)) AS dias
+  FROM (SELECT data, SUM(entregue_no_mes) AS no_mes, SUM(entregue_depois) AS depois, SUM(nao_seguiu) AS nao_seguiu,
+          SUM(em_andamento) AS em_andamento
+        FROM t GROUP BY data) a
+  FULL JOIN (SELECT dia, COUNTIF(situacao = 'no_mes') AS no_mes, COUNTIF(situacao = 'depois') AS depois,
+               COUNTIF(situacao = 'nao_seguiu') AS nao_seguiu, COUNTIF(situacao = 'em_andamento') AS em_andamento
+             FROM periodo GROUP BY dia) b
+    ON a.data = b.dia
+),
+
+-- situação por ano de entrada (para o log): as 4 colunas, Encerrado sem saída válida (pendência de preenchimento do
+-- board) e em andamento com entrada há mais de 60 dias
+situacao_por_ano AS (
+  SELECT
+    EXTRACT(YEAR FROM dia) AS ano,
+    COUNTIF(situacao = 'no_mes') AS no_mes,
+    COUNTIF(situacao = 'depois') AS depois,
+    COUNTIF(situacao = 'nao_seguiu') AS nao_seguiu,
+    COUNTIF(situacao = 'em_andamento') AS em_andamento,
+    COUNTIF(situacao = 'nao_seguiu' AND status = 'Encerrado') AS encerrado_sem_saida,
+    COUNTIF(situacao = 'em_andamento'
+            AND dia < DATE_SUB(CURRENT_DATE('America/Sao_Paulo'), INTERVAL 60 DAY)) AS andamento_60d
+  FROM periodo
+  GROUP BY ano
+),
+
+-- 2026 por mês de entrada, na tabela: referência de agosto e limite de em andamento nos meses fechados
+mes_2026 AS (
+  SELECT mes, SUM(quantidade + quantidade_estimada) AS total, SUM(entregue_no_mes) AS no_mes,
+    SUM(entregue_depois) AS depois, SUM(nao_seguiu) AS nao_seguiu, SUM(em_andamento) AS em_andamento
+  FROM t
+  WHERE ano = 2026
+  GROUP BY mes
+),
+
 -- referência por board histórico (carga única): cards de cada board com data (real ou estimada) desde 2024-10-01,
 -- SEM o limite "até ontem" — assim a conta não muda com o passar dos dias, só se a silver histórica for recarregada.
 -- Cards do board 2026 que caiam em 2025 não mexem nesta conta
@@ -226,6 +279,8 @@ resumo AS (
     COUNTIF(data IS NULL OR grupo_input IS NULL OR tipo_de_input IS NULL OR familia IS NULL
             OR quantidade IS NULL OR quantidade_estimada IS NULL OR quantidade_saida IS NULL
             OR quantidade < 0 OR quantidade_estimada < 0 OR quantidade_saida < 0
+            OR entregue_no_mes IS NULL OR entregue_depois IS NULL OR nao_seguiu IS NULL OR em_andamento IS NULL
+            OR entregue_no_mes < 0 OR entregue_depois < 0 OR nao_seguiu < 0 OR em_andamento < 0
             OR quantidade + quantidade_estimada + quantidade_saida = 0
             OR ano IS DISTINCT FROM EXTRACT(YEAR FROM data) OR mes IS DISTINCT FROM EXTRACT(MONTH FROM data)
             OR inicio_semana IS DISTINCT FROM DATE_TRUNC(data, ISOWEEK) OR EXTRACT(DAYOFWEEK FROM inicio_semana) != 2
@@ -239,6 +294,9 @@ resumo AS (
                 THEN 'Internos'
               ELSE 'Outros'
             END) AS grupo_errado,
+    -- R20: as 4 colunas de situação somam os cards que entraram na linha
+    COUNTIF(entregue_no_mes + entregue_depois + nao_seguiu + em_andamento
+            IS DISTINCT FROM quantidade + quantidade_estimada) AS soma_situacao_errada,
     SUM(quantidade_estimada) AS estimados,
     COUNTIF(quantidade + quantidade_estimada = 0) AS linhas_so_saida,
     SUM(IF(EXTRACT(YEAR FROM data) = 2024, quantidade + quantidade_estimada, 0)) AS total_2024,
@@ -307,7 +365,37 @@ FROM resumo r, fontes f, UNNEST([
     (SELECT FORMAT('board 2024: %d | board 2025: %d', b2024, b2025) FROM por_board),
     'board 2024: 327 | board 2025: 3578',
     (SELECT b2024 = 327 AND b2025 = 3578 FROM por_board)),
-  ('referência de 22/10/2026 por ano (2024: 328 | 2025: 3577 | 2026: 5488)',
+  ('entregue_no_mes + entregue_depois + nao_seguiu + em_andamento = quantidade + quantidade_estimada (R20): linhas diferentes',
+    CAST(r.soma_situacao_errada AS STRING), '0', r.soma_situacao_errada = 0),
+  ('situação = recontagem, dia a dia (dias diferentes)', (SELECT CAST(dias AS STRING) FROM divergencias_situacao), '0',
+    (SELECT dias = 0 FROM divergencias_situacao)),
+  ('referência de 23/10/2026 por ano (entradas 328 | 3577 | ≥ 5529; saídas 204 | 3012 | ≥ 4276): anos diferentes',
+    IFNULL((SELECT STRING_AGG(FORMAT('%d: entradas %d, saídas %d', ano, e, s), ' | ' ORDER BY ano)
+            FROM (SELECT p.ano, p.real_t + p.est_t AS e, IFNULL(q.n_t, 0) AS s
+                  FROM por_ano p LEFT JOIN saida_por_ano q USING (ano))
+            WHERE (ano = 2024 AND (e != 328 OR s != 204)) OR (ano = 2025 AND (e != 3577 OR s != 3012))
+               OR (ano = 2026 AND (e < 5529 OR s < 4276))), '0'),
+    'aviso', TRUE),
+  ('2026 jan–set: meses com mais de 20 em andamento', IFNULL((
+      SELECT STRING_AGG(FORMAT('%d: %d', mes, em_andamento), ' | ' ORDER BY mes)
+      FROM mes_2026 WHERE mes <= 9 AND em_andamento > 20), '0'), 'aviso', TRUE),
+  ('2026 jan–set: em andamento por mês', (
+      SELECT STRING_AGG(FORMAT('%d: %d', mes, em_andamento), ' | ' ORDER BY mes) FROM mes_2026 WHERE mes <= 9),
+    'informativo', TRUE),
+  ('agosto/2026: total = no mês + depois + não seguiu + em andamento', (
+      SELECT FORMAT('%d = %d + %d + %d + %d', total, no_mes, depois, nao_seguiu, em_andamento)
+      FROM mes_2026 WHERE mes = 8), 'informativo', TRUE),
+  ('situação por ano de entrada (no mês | depois | não seguiu | em andamento)', (
+      SELECT STRING_AGG(FORMAT('%d: %d | %d | %d | %d', ano, no_mes, depois, nao_seguiu, em_andamento), ' · '
+                        ORDER BY ano)
+      FROM situacao_por_ano), 'informativo', TRUE),
+  ('Encerrado sem saída válida, por ano de entrada (pendência de preenchimento do board)', (
+      SELECT STRING_AGG(FORMAT('%d: %d', ano, encerrado_sem_saida), ' | ' ORDER BY ano) FROM situacao_por_ano),
+    'informativo', TRUE),
+  ('em andamento com entrada há mais de 60 dias, por ano de entrada', (
+      SELECT STRING_AGG(FORMAT('%d: %d', ano, andamento_60d), ' | ' ORDER BY ano) FROM situacao_por_ano),
+    'informativo', TRUE),
+  ('totais por ano (entradas)',
     FORMAT('2024: %d | 2025: %d | 2026: %d', r.total_2024, r.total_2025, r.total_2026), 'informativo', TRUE),
   ('fora: data antes de 2024-10-01', CAST(f.antes_do_inicio AS STRING), 'informativo', TRUE),
   ('fora: sem criado_em nem data_de_saida (por board)', IFNULL(f.sem_data, '0'), 'informativo', TRUE),

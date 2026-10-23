@@ -107,6 +107,7 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | D17 | 22/10/2026 | Código no GitHub: repositório privado `CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-`, branch `main`; deploy por `git clone` no Cloud Shell (zip e `tools/empacotar.py` retirados); `.env` fora do Git | fecha D8: duas tabelas prontas; histórico versionado e deploy reproduzível a partir de um commit |
 
 | D18 | 23/10/2026 | **Saída** na `gld_agenciamento_entrada_diaria` (coluna `quantidade_saida`, mesmo grão): 1ª ida a Aguardando Feedback pelo log no board 2026; `data_de_saida` em 2024/2025 e quando o log não tem a ida; saída antes da criação fica fora; fechados sem entrega não entram (R12–R15 da ficha) | a `data_de_saida` é regravada a cada reentrega e faria um mês fechado mudar; a 1ª ida pelo log é fixa. Uma tabela só para entrada e saída, sem mexer no Power BI |
+| D19 | 23/10/2026 | **Situação por safra** na `gld_agenciamento_entrada_diaria` (mesmo grão, sem tabela nova): 4 colunas INT64 sobre os cards que entraram na linha — `entregue_no_mes`, `entregue_depois` (saída válida da D18, até ontem, no mês da entrada ou depois), `nao_seguiu` (sem saída e status Declinado*, Standby ou Encerrado), `em_andamento` (o resto); somam `quantidade + quantidade_estimada`; **foto do dia** (R16–R20 da ficha) | relatório da diretoria por mês de entrada (entregue no mês, depois, não seguiu, em andamento) sem outra tabela; mesma saída da `quantidade_saida`, para os números conversarem |
 
 ## 7. Próximos passos
 
@@ -142,3 +143,4 @@ Situações: 📝 em definição · 🧪 SQL em validação · ✅ aprovada · �
 | 22/10/2026 | **Implantado** pelo Caio: `gld_agenciamento_entrada_diaria` criada e validada; permissões; job tudo-ou-nada com as duas tabelas; ensaio e carga real (19:08 Brasília: SLA 14.838 linhas, entrada 1.826). Agendamento seg–sex 09:00 passa a atualizar as duas |
 | 23/10/2026 | Saída na entrada diária (D18) construída com o Caio e aprovada (regra B: 1ª entrega); ensaio sem gravar com toda validação ok |
 | 23/10/2026 | **Implantado** pelo Caio (commit `0c10d28`): coluna `quantidade_saida` por `ALTER TABLE`, job reimplantado, ensaio `gsxdq` e carga real `t89q9` (entrada 2.333 linhas, 7.492 saídas; SLA 14.873) |
+| 23/10/2026 | Situação por safra na entrada diária (D19, R16–R20): 4 colunas novas; ensaio sem gravar com toda validação ok (soma em 100% das linhas, recontagem dia a dia 0 diferenças; entradas 328 / 3.577 / 5.529 e saídas 204 / 3.012 / 4.276 inalteradas; agosto/2026 = 640: 486 + 50 + 101 + 3) |

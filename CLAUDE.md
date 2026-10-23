@@ -19,7 +19,7 @@ bronze 08:00 (PPD-BRONZE-MONDAY) → silver 08:30 (PPD-SILVER-MONDAY) → gold 0
 | Item | Estado |
 |---|---|
 | `gold_monday.gld_agenciamento_2026_sla_movimentos` | 🚀 **em produção** desde 21/10/2026 — uma linha por passagem de um projeto por um status; 36 colunas; regras R1–R23; 14.838 linhas / 3.105 projetos em 22/10; validação 19/19. **Concluída** |
-| `gold_monday.gld_agenciamento_entrada_diaria` | 🚀 **em produção** desde 22/10/2026 — cards criados por data × grupo de input × tipo × família (boards 2024–2026), data estimada separada; 1.826 linhas na 1ª carga; validação toda ok. **Saída** (`quantidade_saida`, R12–R15, D18: 1ª entrega ao cliente) em produção desde 23/10/2026 — 2.333 linhas, 7.492 saídas na carga de 23/10. **Concluída** |
+| `gold_monday.gld_agenciamento_entrada_diaria` | 🚀 **em produção** desde 22/10/2026 — cards criados por data × grupo de input × tipo × família (boards 2024–2026), data estimada separada; 1.826 linhas na 1ª carga; validação toda ok. **Saída** (`quantidade_saida`, R12–R15, D18: 1ª entrega ao cliente) em produção desde 23/10/2026 — 2.333 linhas, 7.492 saídas na carga de 23/10. **Situação por safra** (`entregue_no_mes`, `entregue_depois`, `nao_seguiu`, `em_andamento`; R16–R20, D19; foto do dia) pedida pelo Caio em 23/10/2026 — 16 colunas; implantação com o Caio (ver `deploy/gcp_setup.md`) |
 | Job `gold-agenciamento` | Cloud Run Job (`us-central1`) + Scheduler `gold-agenciamento-diario` **seg–sex 09:00** (Brasília); atualiza as duas tabelas **tudo ou nada** (D16); código do commit `0c10d28` (23/10/2026) |
 | Alerta | política "gold-agenciamento falhou" → e-mail (testado em 21/10) |
 | Git / GitHub | repositório privado `https://github.com/CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (criado em 22/10/2026, branch `main`). Deploy por `git clone` no Cloud Shell; o `.env` fica fora. Commit e push só quando o Caio pedir |
@@ -31,7 +31,7 @@ Detalhe da produção (conta de serviço, permissões, execuções, ids): `deplo
 | # | Pendência | Quem |
 |---|---|---|
 | 1 | ✅ 1ª execução automática conferida: 22/10/2026 09:02 (Brasília), SLA gravada | — |
-| 2 | Conferir a 1ª execução automática com a saída (seg 26/10/2026 09:00): `_processado_em` das duas ≈ 26/10 12:0x UTC — **não** iguais entre si: cada uma marca o horário do próprio cálculo (segundos de diferença); a gravação é que é numa transação só; `quantidade_saida` preenchida; nenhuma linha ERROR/WARNING no log. Depois: **próximas tabelas gold** (o Caio traz os temas). Lembrete: o calendário de feriados está copiado igual na SLA, na entrada diária e na validação dela — mudar nos três juntos | Claude (leitura) a pedido; Caio + Claude |
+| 2 | Conferir a 1ª execução automática com a saída (seg 26/10/2026 09:00): `_processado_em` das duas ≈ 26/10 12:0x UTC — **não** iguais entre si: cada uma marca o horário do próprio cálculo (segundos de diferença); a gravação é que é numa transação só; `quantidade_saida` e as 4 colunas de situação por safra preenchidas; nenhuma linha ERROR/WARNING no log. Depois: **próximas tabelas gold** (o Caio traz os temas). Lembrete: o calendário de feriados está copiado igual na SLA, na entrada diária e na validação dela — mudar nos três juntos | Claude (leitura) a pedido; Caio + Claude |
 | 3 | ✅ Repositório no GitHub criado e deploy trocado por `git clone` (22/10/2026) | — |
 | 4 | Relatório/dash/site de SLA lendo a tabela — **em outro projeto** | Caio |
 | 5 | Levar à equipe `docs/melhorias_processo.md` (meta de SLA, dono de cada status, hábitos no monday, coluna "Motivo da volta") | Caio |

@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Situação** | 🚀 **em produção desde 22/10/2026** (criada 18:5x Brasília pelo `criar_…sql`, validação toda ok; 1ª carga pelo job às 19:08: 1.826 linhas); atualizada **seg–sex 09:00** pelo job `gold-agenciamento`, junto com a SLA, na mesma transação. **Saída** (`quantidade_saida`, R12–R15) em produção desde 23/10/2026 (coluna acrescentada por `ALTER TABLE`; carga `t89q9`: 2.333 linhas, 7.492 saídas) |
+| **Situação** | 🚀 **em produção desde 22/10/2026** (criada 18:5x Brasília pelo `criar_…sql`, validação toda ok; 1ª carga pelo job às 19:08: 1.826 linhas); atualizada **seg–sex 09:00** pelo job `gold-agenciamento`, junto com a SLA, na mesma transação. **Saída** (`quantidade_saida`, R12–R15) em produção desde 23/10/2026 (coluna acrescentada por `ALTER TABLE`; carga `t89q9`: 2.333 linhas, 7.492 saídas). **Situação por safra** (`entregue_no_mes`, `entregue_depois`, `nao_seguiu`, `em_andamento`; R16–R20) pedida pelo Caio em 23/10/2026: ensaio sem gravar com toda validação ok; implantação pelo Caio (`ALTER TABLE ... ADD COLUMN`) |
 | **Uma linha por** | data × `grupo_input` × `tipo_de_input` × `familia`, **só quando há entrada ou saída** (sem linhas com zero) |
-| **Para que serve** | contagem diária de cards criados (entrada) e entregues ao cliente (saída) no Agenciamento (2024 a 2026) para análise de tendência e previsão de demanda. Uma tabela só: os recortes (grupo, família, com ou sem estimados) e o calendário completo (dias com zero) são feitos por quem consome |
+| **Para que serve** | contagem diária de cards criados (entrada) e entregues ao cliente (saída) no Agenciamento (2024 a 2026) para análise de tendência e previsão de demanda, e a **situação hoje dos cards que entraram em cada dia** (safra) para o relatório da diretoria: por mês de entrada, quantos foram entregues no próprio mês, depois, não seguiram ou estão em andamento. Uma tabela só: os recortes (grupo, família, com ou sem estimados) e o calendário completo (dias com zero) são feitos por quem consome |
 | **Quem usa** | modelos de previsão e o site de relatórios (outro projeto) |
 | **Fontes** | `silver_monday.slv_agenciamento_2024_itens` e `slv_agenciamento_2025_itens` (boards históricos, **carga única** de 22/10/2026) e `silver_monday.slv_agenciamento_2026_itens` (diária, só `state = 'active'`); `silver_monday.slv_agenciamento_2026_log` (diária, mudanças de Status, para a saída — R12) |
 | **Materialização** | tabela, cluster `data, grupo_input`, sem partição (≈ 1.800 linhas). Criada uma vez por `deploy/criar_…sql`; atualizada **seg–sex 09:00** pelo job `gold-agenciamento` (cresce um dia por execução). O job só exige a silver de 2026 do dia; 2024 e 2025 são carga única |
@@ -18,6 +18,15 @@
 - **Saídas num dia** = soma de `quantidade_saida`. É a **1ª entrega ao cliente** (1ª ida a Aguardando Feedback), não o
   encerramento: declinados e outros fechados sem entrega não têm saída.
 - Uma linha pode ter só saída (`quantidade + quantidade_estimada = 0`) ou só entrada (`quantidade_saida = 0`).
+- **Safra** (o que aconteceu com os cards que entraram): somar `entregue_no_mes`, `entregue_depois`, `nao_seguiu` e
+  `em_andamento` pelas linhas do período de **entrada** (ex.: `ano = 2026 AND mes = 8`). As 4 somam
+  `quantidade + quantidade_estimada` em toda linha; numa linha só com saída as 4 são 0. **Não** misturar com a
+  `quantidade_saida` do mesmo dia: esta conta as entregas **feitas** no dia (de cards de qualquer safra); as 4 contam
+  o destino dos cards que **entraram** no dia.
+- **Foto do dia**: as 4 colunas mudam a cada execução — um card de setembro em andamento passa a entregue depois
+  quando chega a Aguardando Feedback; um mês recente tem muito em andamento, que vai se resolvendo. Para comparar
+  meses, olhar meses fechados (o em andamento deles fica pequeno: 0 a 4 por mês em jan–set/2026, em 23/10/2026). Quem
+  quiser guardar a foto de uma data precisa copiar a tabela (aqui não há histórico das fotos).
 - **Série contínua** (para modelos): completar o calendário de 2024-10-01 até ontem com 0 nos dias/combinações sem
   linha — a tabela não grava zeros.
 
@@ -36,7 +45,14 @@
 | 9 | `quantidade` | INT64 | cards com data real | R1 |
 | 10 | `quantidade_estimada` | INT64 | cards com data estimada | R2 |
 | 11 | `quantidade_saida` | INT64 | cards entregues ao cliente no dia | R12–R15 |
-| 12 | `_processado_em` | TIMESTAMP | execução | — |
+| 12 | `entregue_no_mes` | INT64 | dos cards que entraram na linha: saída válida no mesmo mês-calendário da entrada | R16, R19, R20 |
+| 13 | `entregue_depois` | INT64 | dos cards que entraram na linha: saída válida em mês posterior | R16, R19, R20 |
+| 14 | `nao_seguiu` | INT64 | dos cards que entraram na linha: sem saída, status Declinado (qualquer), Standby ou Encerrado | R17, R19, R20 |
+| 15 | `em_andamento` | INT64 | dos cards que entraram na linha: os demais | R18, R19, R20 |
+| 16 | `_processado_em` | TIMESTAMP | execução | — |
+
+Em produção, as colunas acrescentadas por `ALTER TABLE` (`quantidade_saida` e as 4 de situação) ficam **depois** de
+`_processado_em` no esquema; o job grava pelo nome, então a ordem não importa. Quem lê deve usar o nome da coluna.
 
 ## Regras
 
@@ -75,6 +91,16 @@
 | R14 | **Saída antes da criação não vale**: a do log antes da criação cai para a `data_de_saida`; esta também antes da criação → card **fora das saídas** (a entrada dele continua), contado no log do job. Ex.: 41 cards do board 2026 com `data_de_saida` antes da criação ficam com a data do log; 150 (2026), 16 (2025) e 1 (2024) ficam fora | Caio, 23/10/2026 |
 | R15 | `quantidade_saida` com o mesmo período (R4: de 2024-10-01 até ontem; saída futura entra quando chegar), o mesmo `grupo_input` e a mesma `familia` do card (R7–R9); conta pela data, não pelo board (R6). Linha existe quando há entrada **ou** saída (R10). Fechados sem entrega (declinados) **não** entram | Caio, 23/10/2026 |
 
+### Situação por safra
+
+| ID | Regra | Decidido em |
+|---|---|---|
+| R16 | **Entregue**: card com **saída válida** — exatamente a da `quantidade_saida` (R12–R14: 1ª ida a Aguardando Feedback pelo log no board 2026; `data_de_saida` em 2024/2025 e quando falta o log; saída antes da criação não vale) **até ontem** (R4/R15; saída futura ainda não aconteceu). `entregue_no_mes` = saída no mesmo mês-calendário da data de entrada; `entregue_depois` = em mês posterior. Saída em mês **anterior** ao da entrada (só possível em card de data estimada) conta como no mês — 0 casos em 23/10/2026 | Caio, 23/10/2026 |
+| R17 | **Não seguiu**: sem saída válida e **status atual** `Declinado …` (qualquer variante: Internamente, pelo Mercado, pelo talento), `Standby` ou `Encerrado`. Status atual = o da silver do board de origem do card; board 2026 só `state = 'active'` (R5). Encerrado sem saída é pendência de preenchimento do board (vai ao log) | Caio, 23/10/2026 |
+| R18 | **Em andamento**: todos os demais (Entrada, Em elaboração …, Em revisão …, Aguardando Feedback sem saída válida, status vazio) | Caio, 23/10/2026 |
+| R19 | **Safra = data de entrada da linha** (`data` dos cards de `quantidade` e `quantidade_estimada`; o estimado usa a data estimada, R2). As 4 colunas ficam nas linhas de entrada; linha só com saída tem as 4 = 0 | Caio, 23/10/2026 |
+| R20 | `entregue_no_mes + entregue_depois + nao_seguiu + em_andamento = quantidade + quantidade_estimada` em **toda** linha (trava da validação). As colunas são uma **foto do dia** e mudam a cada execução; `quantidade`, `quantidade_estimada` e `quantidade_saida` não mudam por causa delas | Caio, 23/10/2026 |
+
 Sobreposições em 22/10/2026 (189 cards com mais de uma família): Curadoria + Curadoria Orçada 79; Defesa + Defesas \|
 Estudo Comercial 37; Curadoria + Defesas \| Estudo Comercial 33; Upfront + Levop 20; Upfront + Levop + Card de
 Oportunidade 8; Levop + Card de Oportunidade 5; Defesa + Card de Oportunidade 4; Curadoria + Card de Oportunidade 2;
@@ -84,7 +110,11 @@ Upfront + Curadoria + Defesas \| Estudo Comercial 1.
 
 As linhas "informativo" da validação vão ao log do job (Cloud Logging, mensagem "validação", severidade INFO): cards
 fora por estarem antes de 2024-10-01; cards fora por não terem data (por board); cards com data estimada; total 2026
-contra a referência; total por família por ano. A linha "aviso" (tipos de input novos, grupo Outros) vai como
+contra a referência; total por família por ano; e, da situação por safra, por ano de entrada: total de cada uma das
+4 colunas, **Encerrado sem saída válida** (pendência de preenchimento do board) e **em andamento com entrada há mais
+de 60 dias**; agosto/2026 e o em andamento por mês de jan–set/2026. Avisos (WARNING, não bloqueiam): anos fora da
+referência de 23/10/2026 (entradas 328 / 3.577 / ≥ 5.529, saídas 204 / 3.012 / ≥ 4.276) e mês fechado de 2026
+(jan–set) com mais de 20 em andamento. A linha "aviso" (tipos de input novos, grupo Outros) vai como
 **WARNING** quando tem valores (`job/main.py`: `esperado = 'aviso'` e resultado diferente de `0`); não bloqueia a
 gravação.
 
@@ -141,10 +171,44 @@ Total por família por ano (real + estimada):
 Por grupo (linhas · real + estimada): Mercado 574 · 4.331 + 251; Inbound 480 · 2.400 + 158; Internos 481 · 1.131 + 86;
 Proativo 246 · 857 + 97; Sem tipo 44 · 82 + 0.
 
+### Situação por safra (ensaio de 23/10/2026, SELECT validado direto, sem gravar)
+
+Toda validação ok: soma das 4 colunas = `quantidade + quantidade_estimada` em 100% das linhas (0 diferentes);
+recontagem independente nas silvers (mês por `FORMAT_DATE`, status por `LIKE`) com **0 dias diferentes**; nenhuma
+chave repetida, nenhum nulo ou negativo; entradas por ano inalteradas (328 / 3.577 / 5.529) e saídas também
+(204 / 3.012 / 4.276); travas por board inalteradas (327 / 3.578 e 213 / 3.005).
+
+| Ano de entrada | Entradas | No mês | Depois | Não seguiu | Em andamento | Encerrado sem saída | Em andamento > 60 dias |
+|---|---|---|---|---|---|---|---|
+| 2024 | 328 | 182 | 30 | 105 | 11 | 23 | 11 |
+| 2025 | 3.577 | 2.226 | 777 | 572 | 2 | 66 | 2 |
+| 2026 | 5.529 | 3.643 | 631 | 1.095 | 160 | 161 | 8 |
+
+Em andamento por mês de entrada em 2026 (meses fechados): jan 1 · fev 0 · mar 1 · abr 0 · mai 0 · jun 1 · jul 2 ·
+ago 3 · set 4 (referência 0 a 20). Outubro (aberto): 600 entradas, 148 em andamento.
+
+**Agosto/2026: 640 = 486 no mês + 50 depois + 101 não seguiu + 3 em andamento.** A referência pela coluna
+`data_de_saida` era ≈ 462 / 76 / 97 / 5. Refeita aqui pela coluna, com a mesma regra de status: 462 / 76 / 99 / 3.
+Da coluna para a regra B:
+
+- **+31 no mês, −31 depois**: 1ª entrega em agosto, mas a `data_de_saida` foi regravada numa reentrega em setembro
+  ou outubro (a coluna guarda a última ida ao cliente);
+- **−5 no mês, +5 depois**: `data_de_saida` em agosto, mas a 1ª ida a Aguardando Feedback pelo log só em setembro
+  (data preenchida antes da mudança de status);
+- **−2 no mês, +2 não seguiu**: `data_de_saida` antes da criação e sem ida no log — saída inválida (R14); status
+  Declinado Internamente e Encerrado.
+
+A diferença de 2 entre 97 / 5 e 99 / 3 (não seguiu / em andamento) já aparece pela própria coluna: provavelmente
+status lido em outro momento (2 cards que saíram de "em elaboração" para Standby, Declinado ou Encerrado) ou outra
+lista de status; não dá para refazer a referência exata.
+
 ## Pontos de atenção
 
 | Ponto | Efeito |
 |---|---|
+| Situação é foto do dia | as 4 colunas de safra mudam a cada execução; meses recentes têm muito em andamento. A diretoria deve olhar meses fechados ou guardar a foto da data do relatório |
+| Encerrado sem saída (`nao_seguiu`) | 23 / 66 / 161 por ano de entrada: cards encerrados sem ida a Aguardando Feedback nem `data_de_saida` válida. Podem ser entregas que não passaram pelo status — pendência de preenchimento no board; contam como não seguiu |
+| Status atual de 2024/2025 | vem da carga única dos boards históricos e não muda mais. Os 11 (2024) e 2 (2025) em andamento são cards parados nesses boards |
 | Efeito do de-para das variantes antigas (R8) | só o Levop mudou: +12 cards em 2024 (Boletim Informativo; os outros 6 dos 18 são de antes de 2024-10-01 ou sem data). Os 16 "Midia Kits" de 2025 e o "Defesa \| Análise \| Estudo Comercial" de 2024 já caíam numa família pelo nome, ou ficam fora do período |
 | out/2024 ainda fraco (74 cards) contra nov/2024 (129) | o Caio testa o modelo começando em out e em nov/2024 |
 | Mudança de patamar 2025 → 2026 (Mercado +145% na média mensal) | tendência real ou mudança de uso do board |
@@ -166,3 +230,4 @@ Proativo 246 · 857 + 97; Sem tipo 44 · 82 + 0.
 | 22/10/2026 | **Implantada** pelo Caio (Cloud Shell, a partir do commit `75bbf3c`): tabela criada e validada, permissões, job reimplantado com as duas tabelas, ensaio `rkwp9` e carga real `x4sl4` (19:08 Brasília, 1.826 linhas) |
 | 23/10/2026 | **Saída** construída com o Caio (R12–R15, opção B: 1ª ida a Aguardando Feedback pelo log no board 2026; `data_de_saida` em 2024/2025 e como reserva). Coluna nova `quantidade_saida`; linhas com só saída. Ensaio sem gravar: entradas idênticas às de produção (8.842 + 592), saídas 2024: 204 · 2025: 3.012 · 2026: 4.276, recontagem dia a dia 0 diferenças, trava das saídas por board 213 / 3.005; toda validação ok. Aprovada pelo Caio (B), com as limitações de 2024/2025 e o log de `data_de_saida` regravada (437 em 2026) e de Declinado pelo Mercado sem saída (9 / 48 / 112) |
 | 23/10/2026 | **Implantada** pelo Caio (Cloud Shell, commit `0c10d28`): `ALTER TABLE ... ADD COLUMN quantidade_saida`, job reimplantado (agendamento mantido), ensaio `gsxdq` (toda validação ok, sem WARNING) e carga real `t89q9` (14:22 Brasília: 2.333 linhas, 8.842 + 592 entradas, 7.492 saídas) |
+| 23/10/2026 | **Situação por safra** (R16–R20), pedida pelo Caio: `entregue_no_mes`, `entregue_depois`, `nao_seguiu`, `em_andamento` (INT64, foto do dia), mesmo grão; validação com a soma, recontagem dia a dia, referência por ano e meses fechados, e log por ano (4 colunas, Encerrado sem saída, em andamento > 60 dias). Ensaio sem gravar: toda validação ok; agosto/2026 640 = 486 + 50 + 101 + 3 |

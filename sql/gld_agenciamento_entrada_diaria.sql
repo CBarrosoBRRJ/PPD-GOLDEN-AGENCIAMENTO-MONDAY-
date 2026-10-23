@@ -1,10 +1,11 @@
 -- gold_monday.gld_agenciamento_entrada_diaria
 -- Contagem diária de cards criados (entrada) e entregues ao cliente (saída) nos boards de Agenciamento 2024, 2025 e
--- 2026, por grupo de input e família, para análise de tendência e previsão de demanda. Uma linha por data ×
+-- 2026, por grupo de input e família, para análise de tendência e previsão de demanda, e a situação hoje dos cards
+-- que entraram em cada dia (safra: entregue no mês, depois, não seguiu, em andamento). Uma linha por data ×
 -- grupo_input × tipo_de_input × familia, só quando há entrada ou saída (sem linhas com zero: quem consome completa o
 -- calendário e faz os recortes).
 -- Só leitura (SELECT). A gravação é feita pelo deploy/ (CREATE OR REPLACE TABLE ... AS este SELECT).
--- Regras R1–R15: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
+-- Regras R1–R20: docs/tabelas/gld_agenciamento_entrada_diaria.md. Colunas: sql/esquemas/.
 
 WITH parametros AS (
   SELECT
@@ -94,13 +95,14 @@ aguardando_feedback AS (
 -- created_at de 2024/2025 (data da importação). R5: 2026 só state = 'active'. Os boards 2024 e 2025 não têm log
 itens AS (
   SELECT criado_em, data_de_saida, CAST(NULL AS DATE) AS aguardando_feedback, tipo_de_input, tipo_de_output,
-    item_name AS nome, marca
+    item_name AS nome, marca, status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2024_itens`
   UNION ALL
-  SELECT criado_em, data_de_saida, NULL, tipo_de_input, tipo_de_output, item_name, marca
+  SELECT criado_em, data_de_saida, NULL, tipo_de_input, tipo_de_output, item_name, marca, status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2025_itens`
   UNION ALL
-  SELECT DATE(i.criado_em), i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca
+  SELECT DATE(i.criado_em), i.data_de_saida, af.dia, i.tipo_de_input, i.tipo_de_output, i.nome_projeto, i.marca,
+    i.status
   FROM `gglobo-viu-dados-hdg-prd.silver_monday.slv_agenciamento_2026_itens` i
   LEFT JOIN aguardando_feedback af USING (projeto_id)
   WHERE i.state = 'active'
@@ -124,6 +126,7 @@ cards AS (
         THEN i.aguardando_feedback
       WHEN i.data_de_saida >= i.criado_em OR i.criado_em IS NULL THEN i.data_de_saida
     END AS saida,
+    i.status,
     i.tipo_de_input,
     i.tipo_de_output,
     -- R8: texto de busca como na silver: sem acento e minúsculo
@@ -139,6 +142,15 @@ classificados AS (
     c.dia,
     c.estimada,
     c.saida,
+    -- R16–R19: situação hoje do card na safra (o dia da entrada). Saída válida = a da quantidade_saida (R12–R15),
+    -- só até ontem; a do mesmo mês ou de antes (só card de data estimada) = no mês. Sem saída: Declinado (qualquer
+    -- variante), Standby ou Encerrado = não seguiu; o resto (inclusive status vazio) = em andamento
+    CASE
+      WHEN c.saida <= pr.fim
+        THEN IF(DATE_TRUNC(c.saida, MONTH) <= DATE_TRUNC(c.dia, MONTH), 'no_mes', 'depois')
+      WHEN STARTS_WITH(c.status, 'Declinado') OR c.status IN ('Standby', 'Encerrado') THEN 'nao_seguiu'
+      ELSE 'em_andamento'
+    END AS situacao,
     -- R7: grupo do input; vazio = Sem tipo; tipo novo = Outros (vai ao log pela validação)
     CASE
       WHEN c.tipo_de_input IS NULL THEN 'Sem tipo'
@@ -168,18 +180,21 @@ classificados AS (
       ELSE 'Nenhuma'
     END AS familia
   FROM cards c
+  CROSS JOIN parametros pr
 ),
 
 -- cada card vale até dois eventos: a entrada na data dele e a saída na data dela, cada um contado só se cair de
 -- 2024-10-01 até ontem (R2 + R4 + R15; R6: conta pela data, não pelo board). O grupo e a família são os do card
 eventos AS (
   SELECT c.dia AS data, c.grupo_input, c.tipo_de_input, c.familia,
-    IF(c.estimada, 0, 1) AS real, IF(c.estimada, 1, 0) AS estimada, 0 AS saida
+    IF(c.estimada, 0, 1) AS real, IF(c.estimada, 1, 0) AS estimada, 0 AS saida,
+    IF(c.situacao = 'no_mes', 1, 0) AS no_mes, IF(c.situacao = 'depois', 1, 0) AS depois,
+    IF(c.situacao = 'nao_seguiu', 1, 0) AS nao_seguiu, IF(c.situacao = 'em_andamento', 1, 0) AS em_andamento
   FROM classificados c
   CROSS JOIN parametros pr
   WHERE c.dia BETWEEN pr.inicio AND pr.fim
   UNION ALL
-  SELECT c.saida, c.grupo_input, c.tipo_de_input, c.familia, 0, 0, 1
+  SELECT c.saida, c.grupo_input, c.tipo_de_input, c.familia, 0, 0, 1, 0, 0, 0, 0
   FROM classificados c
   CROSS JOIN parametros pr
   WHERE c.saida BETWEEN pr.inicio AND pr.fim
@@ -199,6 +214,11 @@ SELECT
   SUM(real) AS quantidade,
   SUM(estimada) AS quantidade_estimada,
   SUM(saida) AS quantidade_saida,
+  -- R16–R20: situação hoje dos cards que entraram no dia (quantidade + quantidade_estimada); foto do dia
+  SUM(no_mes) AS entregue_no_mes,
+  SUM(depois) AS entregue_depois,
+  SUM(nao_seguiu) AS nao_seguiu,
+  SUM(em_andamento) AS em_andamento,
   CURRENT_TIMESTAMP() AS _processado_em
 FROM eventos
 GROUP BY data, dia_semana, ano, mes, inicio_semana, grupo_input, tipo_de_input, familia

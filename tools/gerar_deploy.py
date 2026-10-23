@@ -36,7 +36,9 @@ TABELAS = {
             "Entrada e saída diárias do Agenciamento: cards criados (data real em quantidade, estimada em "
             "quantidade_estimada) e entregues ao cliente (quantidade_saida: 1ª ida a Aguardando Feedback) nos boards "
             "2024, 2025 e 2026 por dia, grupo de input, tipo de input e família, de 2024-10-01 até ontem, só "
-            "combinações com entrada ou saída. Para tendência e previsão de demanda; recortes na leitura. "
+            "combinações com entrada ou saída; e a situação hoje dos cards que entraram no dia (safra: "
+            "entregue_no_mes, entregue_depois, nao_seguiu, em_andamento — foto do dia). Para tendência, previsão de "
+            "demanda e relatório por safra; recortes na leitura. "
             "Recriada a cada execução. "
             "Regras: docs/tabelas/gld_agenciamento_entrada_diaria.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
         ),
