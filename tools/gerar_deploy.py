@@ -97,19 +97,20 @@ def gerar_descricoes(tabela: str) -> Path:
         colunas = list(csv.DictReader(f))
 
     nome = f"`{PROJETO_GCP}.{DATASET}.{tabela}`"
-    comandos = [f"ALTER TABLE {nome} SET OPTIONS(description={texto(conf['descricao'])});"]
-    comandos += [
-        f"ALTER TABLE {nome} ALTER COLUMN {c['coluna']} SET OPTIONS(description={texto(c['descricao'])});"
-        for c in colunas
-    ]
+    # duas instruções, não uma por coluna: o BigQuery limita a 5 atualizações de metadado por tabela a cada 10 s
+    # (em 23/10/2026 um script com 17 instruções parou na 8ª com "too many table update operations")
+    clausulas = ",\n".join(
+        f"  ALTER COLUMN {c['coluna']} SET OPTIONS(description={texto(c['descricao'])})" for c in colunas
+    )
     ddl = (
         f"-- GERADO por tools/gerar_deploy.py a partir de sql/esquemas/{tabela}.csv.\n"
         "-- Não editar à mão: altere o esquema e gere de novo.\n"
         f"-- Executar no BigQuery com a conta corporativa, no projeto {PROJETO_GCP} (região US).\n"
         "-- Só atualiza as descrições da tabela e das colunas: não mexe em dados, esquema nem permissões. Seguro\n"
-        "-- repetir. Toda coluna do esquema precisa existir na tabela (coluna nova é por ALTER TABLE ... ADD COLUMN).\n\n"
-        + "\n".join(comandos)
-        + "\n"
+        "-- repetir. Toda coluna do esquema precisa existir na tabela (coluna nova é por ALTER TABLE ... ADD COLUMN).\n"
+        "-- Duas instruções (tabela; todas as colunas numa só): cota de 5 atualizações de metadado por tabela / 10 s.\n\n"
+        f"ALTER TABLE {nome} SET OPTIONS(description={texto(conf['descricao'])});\n\n"
+        f"ALTER TABLE {nome}\n{clausulas};\n"
     )
     destino = RAIZ / "deploy" / f"descrever_{tabela}.sql"
     destino.write_text(ddl, encoding="utf-8")
