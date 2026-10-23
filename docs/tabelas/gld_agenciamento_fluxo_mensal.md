@@ -5,7 +5,7 @@ validação com números e histórico.
 
 | | |
 |---|---|
-| **Situação** | ✅ aprovada para implantar em 23/10/2026 (ordem do Caio); ensaio sem gravar com toda validação ok. Implantação pelo Caio: criar pelo `criar_…sql`, permissão da conta do job, incluir em `TABELAS` depois da diária |
+| **Situação** | 🚀 **em produção desde 23/10/2026** (criada pelo `criar_…sql`, validação 17/17; 1ª carga pelo job `7jps6` às 17:24 Brasília: 622 linhas); atualizada **seg–sex 09:00** pelo job `gold-agenciamento`, depois da diária, na mesma transação |
 | **Pergunta** | para os pedidos que entraram em cada mês (safra), quando cada um saiu: entregue em que mês, não seguiu em que mês, ou ainda em andamento |
 | **Por que existe** | o relatório da diretoria precisa do **extrato** de cada mês: o que entrou, o que saiu do próprio mês, o que saiu de safras anteriores e o resíduo que ainda vai sair. A diária mostra o destino de cada safra (4 colunas), mas não **em que mês** cada card saiu; misturar esse grão (safra × mês do evento) na diária só confundiria |
 | **O que esperamos fazer** | extrato mensal no site de relatórios (outro projeto); curva de fechamento por safra (quanto de uma safra sai em 0, 1, 2… meses) para a previsão, junto com a demanda diária da `gld_agenciamento_entrada_diaria` |
@@ -130,3 +130,4 @@ Ensaio de 23/10/2026 (SELECT validado direto, contra a diária de produção da 
 | Data | O que mudou |
 |---|---|
 | 23/10/2026 | Criada por ordem do Caio (nova tabela, não colunas na diária: outro grão). Regras F1–F6; herdadas da diária. SELECT gerado a partir do da diária; validação contra a diária no grão mês × grupo × tipo × família; job passa a validar contra a versão da diária da mesma execução e a exigir a ordem. Ensaio sem gravar: toda validação ok; set/2026 733 = 460 + 131 + 138 + 4 e 515 entregas = 460 + 55 |
+| 23/10/2026 | **Implantada** pelo Caio em 23/10/2026 (Cloud Shell, commit `2eb1a89`): tabela criada pelo `criar_…sql` e validada (17/17 ok), `dataEditor` da conta `gold-agenciamento` na tabela, job reimplantado com `TABELAS=…sla_movimentos,…entrada_diaria,…fluxo_mensal`, ensaio `gold-agenciamento-hvfd9` (dry-run; o fluxo validado contra a diária da mesma execução: 0 diferenças) e carga real `gold-agenciamento-7jps6` (17:24 Brasília: 622 linhas, 9.434 cards; diária 2.336, SLA 14.873). Agendamento conferido: `ENABLED`, `0 9 * * 1-5`, `America/Sao_Paulo`, próxima 26/10/2026 09:00 |
