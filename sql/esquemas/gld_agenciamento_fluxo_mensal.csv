@@ -1,0 +1,9 @@
+coluna,tipo,descricao
+mes_entrada,DATE,"1º dia do mês de entrada do card (safra), com as regras de data da gld_agenciamento_entrada_diaria (criado_em; cadastro retroativo pela data_de_entrada; sem criado_em, data_de_saida − 5 dias úteis); de 2024-10 até o mês de ontem. Com evento, mes_evento, grupo_input, tipo_de_input e familia, forma a chave"
+evento,STRING,"O que aconteceu com o card até hoje: entregue (1ª entrega ao cliente, a mesma saída da quantidade_saida da diária), nao_seguiu (sem entrega e status atual Declinado, Standby ou Encerrado) ou em_andamento (os demais). Um evento por card"
+mes_evento,DATE,"1º dia do mês do evento: entregue = mês da 1ª entrega; nao_seguiu = mês em que o card chegou ao status atual, pelo log (board 2026); NULL nos boards 2024/2025 (sem log) e quando o log não tem a mudança; em_andamento = NULL. Nunca antes de mes_entrada"
+grupo_input,STRING,"Mercado, Inbound, Proativo, Internos (ViU, Interna, Globo, ViU First, OTR) ou Sem tipo (vazio); Outros = tipo novo ainda sem grupo. Como na diária"
+tipo_de_input,STRING,"Valor original da silver; vazio = Sem tipo. Como na diária"
+familia,STRING,"Upfront, Levop, Mídia Kit, Análise, Defesa, Curadoria, Card de Oportunidade (Levop), Curadoria Orçada, Defesas | Estudo Comercial ou Nenhuma; com mais de uma, vale a primeira desta ordem. Como na diária"
+quantidade,INT64,"Cards da combinação (cada card conta uma vez, num evento só). Foto do dia: os em andamento migram para entregue ou não seguiu"
+_processado_em,TIMESTAMP,"Momento da execução"

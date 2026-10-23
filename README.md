@@ -10,6 +10,7 @@ projeto inteiro está no [PRD](docs/PRD.md).
 |---|---|---|
 | `gold_monday.gld_agenciamento_2026_sla_movimentos` | passagem de um projeto por um status | [docs/tabelas/gld_agenciamento_2026_sla_movimentos.md](docs/tabelas/gld_agenciamento_2026_sla_movimentos.md) |
 | `gold_monday.gld_agenciamento_entrada_diaria` (em produção desde 22/10/2026) | data × grupo de input × tipo de input × família | [docs/tabelas/gld_agenciamento_entrada_diaria.md](docs/tabelas/gld_agenciamento_entrada_diaria.md) |
+| `gold_monday.gld_agenciamento_fluxo_mensal` (aprovada em 23/10/2026) | mês de entrada × evento × mês do evento × grupo × tipo × família | [docs/tabelas/gld_agenciamento_fluxo_mensal.md](docs/tabelas/gld_agenciamento_fluxo_mensal.md) |
 
 ## Estrutura
 

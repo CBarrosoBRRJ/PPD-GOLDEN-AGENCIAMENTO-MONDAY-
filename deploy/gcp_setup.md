@@ -57,12 +57,13 @@ bq query --use_legacy_sql=false --location=US < deploy/descrever_gld_agenciament
 ```
 
 4. Implantar e ensaiar. `TABELAS` traz **sempre a lista completa** de produção (a mesma de `TABELAS_PRODUCAO` no
-   `job/main.py`); uma lista menor tira a tabela que faltar da atualização. A vírgula exige o separador `^@^`:
+   `job/main.py`, **na mesma ordem**: a validação do fluxo mensal confere contra a diária, que vem antes); uma lista
+   menor tira a tabela que faltar da atualização. A vírgula exige o separador `^@^`:
 
 ```bash
 gcloud run jobs deploy gold-agenciamento --source . --region=$REGION --service-account=$SA \
   --tasks=1 --max-retries=1 --task-timeout=45m --memory=1Gi --cpu=1 \
-  --set-env-vars="^@^GCP_PROJECT_ID=$PROJECT@BQ_LOCATION=US@BQ_DATASET_GOLD=gold_monday@TABELAS=gld_agenciamento_2026_sla_movimentos,gld_agenciamento_entrada_diaria@EXIGIR_SILVER_DO_DIA=true@ESPERA_SILVER_MIN=30@TZ=America/Sao_Paulo" \
+  --set-env-vars="^@^GCP_PROJECT_ID=$PROJECT@BQ_LOCATION=US@BQ_DATASET_GOLD=gold_monday@TABELAS=gld_agenciamento_2026_sla_movimentos,gld_agenciamento_entrada_diaria,gld_agenciamento_fluxo_mensal@EXIGIR_SILVER_DO_DIA=true@ESPERA_SILVER_MIN=30@TZ=America/Sao_Paulo" \
   --labels="projeto=ppd-golden-agenciamento-monday,camada=gold"
 gcloud run jobs execute gold-agenciamento --region=$REGION --wait --args=--dry-run
 ```

@@ -56,6 +56,24 @@ TABELAS = {
             "tipo": "entrada-diaria",
         },
     },
+    "gld_agenciamento_fluxo_mensal": {
+        "descricao": (
+            "Extrato por safra do Agenciamento (boards 2024, 2025 e 2026): para os cards que entraram em cada mês "
+            "(mes_entrada, de 2024-10 em diante), o que aconteceu até hoje e em que mês — entregue (1ª entrega ao "
+            "cliente), nao_seguiu (Declinado, Standby ou Encerrado sem entrega; mês pelo log do board 2026, NULL em "
+            "2024/2025) ou em_andamento — por grupo de input, tipo de input e família. Cada card conta uma vez. Mesmas "
+            "regras de card da gld_agenciamento_entrada_diaria. Foto do dia: recriada a cada execução. "
+            "Regras: docs/tabelas/gld_agenciamento_fluxo_mensal.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "cluster": ["mes_entrada", "evento"],
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2024-2026",
+            "origem": "monday",
+            "tipo": "fluxo-mensal",
+        },
+    },
 }
 
 

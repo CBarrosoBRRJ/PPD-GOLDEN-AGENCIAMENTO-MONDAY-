@@ -32,7 +32,10 @@ LOCAL = os.environ.get("BQ_LOCATION", "US")
 DATASET_GOLD = os.environ.get("BQ_DATASET_GOLD", "gold_monday")
 # tabelas que a produção deve atualizar; TABELAS diferente disso gera aviso no log (proteção contra um deploy com a
 # lista desatualizada, que tiraria uma tabela da atualização sem falhar)
-TABELAS_PRODUCAO = ["gld_agenciamento_2026_sla_movimentos", "gld_agenciamento_entrada_diaria"]
+# A ordem importa: a validação de uma tabela pode conferir contra outra já calculada nesta execução (o fluxo mensal
+# confere contra a entrada diária), então a de referência vem antes
+TABELAS_PRODUCAO = ["gld_agenciamento_2026_sla_movimentos", "gld_agenciamento_entrada_diaria",
+                    "gld_agenciamento_fluxo_mensal"]
 TABELAS = [t.strip() for t in os.environ.get("TABELAS", ",".join(TABELAS_PRODUCAO)).split(",") if t.strip()]
 # silvers diárias que precisam ser de hoje; as de carga única (slv_agenciamento_2024_itens e _2025_itens) ficam fora
 FONTES = [
@@ -92,16 +95,26 @@ def destino(tabela: str) -> str:
     return f"`{PROJETO}.{DATASET_GOLD}.{tabela}`"
 
 
-def calcular_e_validar(cliente: bigquery.Client, na_sessao: bigquery.QueryJobConfig, tabela: str) -> dict:
-    """Cria a tabela nova (novo_<tabela>) na sessão e roda a validação sobre ela; qualquer ok = FALSE é falha."""
+def calcular_e_validar(cliente: bigquery.Client, na_sessao: bigquery.QueryJobConfig, tabela: str,
+                       calculadas: list[str]) -> dict:
+    """Cria a tabela nova (novo_<tabela>) na sessão e roda a validação sobre ela; qualquer ok = FALSE é falha.
+    Se a validação lê outra tabela gold do projeto, lê a versão desta execução (novo_<outra>), que precisa estar em
+    `calculadas` — senão compararia o cálculo de hoje com a carga anterior."""
     select = (RAIZ / "sql" / f"{tabela}.sql").read_text(encoding="utf-8").rstrip().rstrip(";")
     validacao = (RAIZ / "sql" / "validacoes" / f"{tabela}.sql").read_text(encoding="utf-8")
     if destino(tabela) not in validacao:
         raise FalhaJob(f"{tabela}: a validação não lê {destino(tabela)}")
     novo = f"novo_{tabela}"
+    referencias = [t for t in TABELAS_PRODUCAO if t != tabela and destino(t) in validacao]
+    faltando = [t for t in referencias if t not in calculadas]
+    if faltando:
+        raise FalhaJob(f"{tabela}: a validação confere contra {faltando}, que precisa vir antes em TABELAS")
 
     cliente.query(f"CREATE TEMP TABLE {novo} AS\n{select}", job_config=na_sessao).result()
-    resultado = list(cliente.query(validacao.replace(destino(tabela), novo), job_config=na_sessao).result())
+    texto = validacao.replace(destino(tabela), novo)
+    for t in referencias:
+        texto = texto.replace(destino(t), f"novo_{t}")
+    resultado = list(cliente.query(texto, job_config=na_sessao).result())
     falhas = [dict(l) for l in resultado if not l["ok"]]
     for l in resultado:
         # esperado = 'aviso': não bloqueia, mas vai ao log como WARNING quando há o que avisar
@@ -126,7 +139,9 @@ def atualizar(cliente: bigquery.Client, tabelas: list[str]) -> dict:
     abrir.result()
     na_sessao = config(connection_properties=[bigquery.ConnectionProperty("session_id", abrir.session_info.session_id)])
     try:
-        resumos = {t: calcular_e_validar(cliente, na_sessao, t) for t in tabelas}
+        resumos = {}
+        for t in tabelas:
+            resumos[t] = calcular_e_validar(cliente, na_sessao, t, list(resumos))
         if DRY_RUN:
             log("INFO", "DRY_RUN: nada gravado", resumos=resumos)
             return resumos
