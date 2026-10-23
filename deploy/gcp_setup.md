@@ -11,16 +11,17 @@ só se todas passarem, troca o conteúdo de todas numa **única transação** (`
 ficam). Qualquer falha: nada gravado em nenhuma tabela, execução marcada como falha, e-mail de alerta. Se `TABELAS`
 vier diferente da lista de produção (`TABELAS_PRODUCAO` no `job/main.py`), o log registra um aviso WARNING.
 
-## Estado da produção (implantado em 21/10/2026 pelo Caio, conta corporativa, Cloud Shell; atualizado em 22/10/2026)
+## Estado da produção (implantado em 21/10/2026 pelo Caio, conta corporativa, Cloud Shell; atualizado em 23/10/2026)
 
 | Item | Estado |
 |---|---|
-| Tabelas | `gold_monday.gld_agenciamento_2026_sla_movimentos` (criada em 21/10/2026; 36 colunas; em 22/10/2026 19:08 Brasília: 14.838 linhas, 3.105 projetos, validação 19/19) e `gold_monday.gld_agenciamento_entrada_diaria` (criada em 22/10/2026 pelo `criar_…sql`, validação toda ok; 1ª carga pelo job às 19:08: 1.826 linhas, 2024-10-02 a 2026-10-21, 328 / 3.577 / 5.488 cards por ano). As duas gravadas na mesma transação |
-| Código | commit `75bbf3c` de `main` em `https://github.com/CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (clone no Cloud Shell em `~/PPD-GOLDEN-AGENCIAMENTO-MONDAY`; `gh` logado como `CBarrosoBRRJ`) |
+| Tabelas | `gold_monday.gld_agenciamento_2026_sla_movimentos` (criada em 21/10/2026; 36 colunas; em 22/10/2026 19:08 Brasília: 14.838 linhas, 3.105 projetos, validação 19/19) e `gold_monday.gld_agenciamento_entrada_diaria` (criada em 22/10/2026 pelo `criar_…sql`, validação toda ok; 1ª carga pelo job às 19:08: 1.826 linhas, 2024-10-02 a 2026-10-21, 328 / 3.577 / 5.488 cards por ano). Em 23/10/2026 a entrada diária ganhou a coluna `quantidade_saida` (`ALTER TABLE ... ADD COLUMN`, dados e permissões mantidos; a coluna fica por último no esquema; o job grava pelo nome); carga de 23/10 14:22 Brasília: 2.333 linhas, 8.842 reais + 592 estimadas, 7.492 saídas; SLA 14.873 linhas. As duas gravadas na mesma transação; o `_processado_em` de cada uma é o horário do cálculo dela (segundos de diferença), não o da gravação |
+| Código | commit `0c10d28` de `main` (desde 23/10/2026; antes `75bbf3c`) em `https://github.com/CBarrosoBRRJ/PPD-GOLDEN-AGENCIAMENTO-MONDAY-` (clone no Cloud Shell em `~/PPD-GOLDEN-AGENCIAMENTO-MONDAY`; `gh` logado como `CBarrosoBRRJ`) |
 | Conta de serviço | `gold-agenciamento@gglobo-viu-dados-hdg-prd.iam.gserviceaccount.com`: `roles/bigquery.jobUser` no projeto; `roles/bigquery.dataViewer` em `silver_monday.slv_agenciamento_2026_itens`, `slv_agenciamento_2026_log`, `slv_agenciamento_2024_itens` e `slv_agenciamento_2025_itens`; `roles/bigquery.dataEditor` nas duas tabelas gold; `roles/run.invoker` no job |
 | Job | Cloud Run Job `gold-agenciamento` (`us-central1`), 1 CPU, 1 GiB, timeout 45 min, 1 nova tentativa; `TABELAS=gld_agenciamento_2026_sla_movimentos,gld_agenciamento_entrada_diaria`, `EXIGIR_SILVER_DO_DIA=true`, `ESPERA_SILVER_MIN=30`, `TZ=America/Sao_Paulo`; tudo ou nada (D16) |
 | Execuções de 21/10 | ensaio `gold-agenciamento-klklx` (16/16, nada gravado); 1ª carga `gold-agenciamento-bxhq2` (21:16 UTC, 14.776 linhas); teste do alerta `gold-agenciamento-6ts2n` (falha forçada, nada gravado, e-mail recebido) |
 | Execuções de 22/10 | 1ª automática (09:02, SLA); depois do deploy com as duas tabelas: ensaio `gold-agenciamento-rkwp9` (dry-run) e carga real `gold-agenciamento-x4sl4` (22:08 UTC), as duas concluídas com sucesso |
+| Execuções de 23/10 | automática 09:02 (Brasília); depois da coluna `quantidade_saida` e do deploy do `0c10d28`: ensaio `gold-agenciamento-gsxdq` (dry-run, toda validação ok, sem WARNING) e carga real `gold-agenciamento-t89q9` (17:22 UTC), as duas concluídas com sucesso. Agendamento conferido: `0 9 * * 1-5`, `America/Sao_Paulo`, `ENABLED` |
 | Agendamento | Cloud Scheduler `gold-agenciamento-diario`: `0 9 * * 1-5`, `America/Sao_Paulo` — 1ª execução automática 22/10/2026 09:00. Ordem do dia: bronze 08:00 → silver 08:30 → **gold 09:00** |
 | Alerta | política "gold-agenciamento falhou" (`alertPolicies/12083430023858162253`), canal de e-mail dos jobs bronze e silver |
 
