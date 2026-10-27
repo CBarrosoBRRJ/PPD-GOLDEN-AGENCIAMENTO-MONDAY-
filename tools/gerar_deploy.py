@@ -74,6 +74,225 @@ TABELAS = {
             "tipo": "fluxo-mensal",
         },
     },
+    "gld_agenciamento_2026_talentos_ano": {
+        "descricao": (
+            "Divisão anual dos pedidos do board 2026 entre Exclusivos, Não exclusivos (inclui Squad de Talentos) e "
+            "Sem talento, de 1º/jan até ontem, com a exclusividade na data do pedido (silver) e as regras de data da "
+            "gld_agenciamento_entrada_diaria; o total é igual às entradas do ano da diária. Uma linha por categoria. "
+            "Recriada a cada execução. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_talentos_ano.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "cluster": ["ano", "categoria"],
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "talentos-ano",
+        },
+    },
+    "gld_agenciamento_2026_talentos_ranking": {
+        "descricao": (
+            "Ranking de talentos do board 2026 no ano (1º/jan até ontem), por recorte (todos, exclusivo, "
+            "nao-exclusivo): os 10 com mais pedidos e os que passaram pelos 10 do acumulado no fim de algum mês "
+            "(corrida do ano), com os pedidos de cada um mês a mês. Mesma população da "
+            "gld_agenciamento_2026_talentos_ano; sem Squad de Talentos e sem pedidos sem talento. Uma linha por "
+            "recorte × talento × mês com pedido. Recriada a cada execução. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_talentos_ranking.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "cluster": ["grupo", "pos"],
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "talentos-ranking",
+        },
+    },
+    "gld_agenciamento_2026_saidas_status": {
+        "descricao": (
+            "Saídas sem entrega do board 2026 por mês do evento e status final (Declinado*, Standby, Encerrado), para "
+            "os cards que entraram no ano (1º/jan até ontem): a composição do evento nao_seguiu da "
+            "gld_agenciamento_fluxo_mensal, que não guarda o status. Mesmas regras do fluxo; sem data no log, mês de "
+            "entrada. Uma linha por mês × status. Recriada a cada execução. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_saidas_status.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "cluster": ["mes", "status"],
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "saidas-status",
+        },
+    },
+    "gld_agenciamento_2026_previsao_exclusividade_diaria": {
+        "descricao": (
+            "Pedidos do board 2026 por dia de entrada e tipo de input (Inbound, Mercado), divididos em exclusivos, "
+            "não exclusivos e sem talento (exclusividade na data do pedido), todo dia de 1º/jan até ontem, com zero "
+            "quando não há pedido; dia_util marca seg–sex fora dos feriados. O total de cada dia e tipo é igual às "
+            "entradas da gld_agenciamento_entrada_diaria. Base das séries da previsão de demanda (a mensal é view "
+            "sobre esta). Uma linha por dia × tipo. Recriada a cada execução. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "cluster": ["data", "tipo"],
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "previsao-exclusividade-diaria",
+        },
+    },
+    "gld_agenciamento_2026_previsao_lotes": {
+        "descricao": (
+            "Pedidos do board 2026 por dia de entrada e recorte da previsão (inbound, mercado, mercado_exclusivos, "
+            "mercado_nao_exclusivos), separados em pedidos em lote (3 ou mais do recorte com a mesma marca no mesmo "
+            "dia) e avulsos, de 1º/jan até ontem; só dias com pedido. Pedidos de cada dia e recorte iguais à "
+            "gld_agenciamento_2026_previsao_exclusividade_diaria. Diagnóstico do mês em andamento da previsão. Uma "
+            "linha por dia × recorte. Recriada a cada execução. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_previsao_lotes.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "cluster": ["data", "recorte"],
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "previsao-lotes",
+        },
+    },
+}
+
+
+# views: soma ou recorte de uma tabela gold, sem cálculo próprio (sempre iguais à base; não entram no job). Criar
+# depois da base, na ordem do cadastro (uma view pode ler outra)
+VIEWS = {
+    "gld_agenciamento_2026_previsao_exclusividade_mensal": {
+        "descricao": (
+            "Pedidos do board 2026 por mês de entrada e tipo de input (Inbound, Mercado), divididos em exclusivos"
+            ", não exclusivos e sem talento (view, sem cálculo próprio: soma por mês da gld_agenciamento_2026_pre"
+            "visao_exclusividade_diaria); completo separa os meses fechados do mês de ontem, ainda parcial. Uma l"
+            "inha por mês × tipo. Sempre igual à base"
+            ". Regras: docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "previsao-exclusividade-mensal",
+        },
+    },
+    "gld_agenciamento_2026_previsao_exclusividade_mensal_inbound": {
+        "descricao": (
+            "Só Inbound da gld_agenciamento_2026_previsao_exclusividade_mensal (view, sem cálculo próprio): pedidos "
+            "do board 2026 por mês de entrada, divididos em exclusivos, não exclusivos e sem talento, de janeiro até "
+            "ontem; completo separa os meses fechados do mês corrente. Uma linha por mês. Sempre igual à base. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md "
+            "(PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "previsao-exclusividade-mensal-inbound",
+        },
+    },
+    "gld_agenciamento_2026_previsao_exclusividade_mensal_mercado": {
+        "descricao": (
+            "Só Mercado da gld_agenciamento_2026_previsao_exclusividade_mensal (view, sem cálculo próprio): pedidos "
+            "do board 2026 por mês de entrada, divididos em exclusivos, não exclusivos e sem talento, de janeiro até "
+            "ontem; completo separa os meses fechados do mês corrente. Uma linha por mês. Sempre igual à base. "
+            "Regras: docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md "
+            "(PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "previsao-exclusividade-mensal-mercado",
+        },
+    },
+    "gld_agenciamento_2026_sla_entregas": {
+        "descricao": (
+            "Um orçamento entregue por linha (view sobre a gld_agenciamento_2026_sla_movimentos): mês da 1ª entre"
+            "ga e o tempo até ela, em horas de trabalho da equipe sem almoço (total, fila, elaboração, revisão), "
+            "horas de calendário e dias úteis inteiros e com fração. Base do SLA de entrega do site. Sempre igual"
+            " à base"
+            ". Regras: docs/tabelas/gld_agenciamento_2026_sla_entregas.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "sla-entregas",
+        },
+    },
+    "gld_agenciamento_2026_sla_entregas_status": {
+        "descricao": (
+            "Horas de trabalho sem almoço de cada orçamento entregue em cada status da equipe antes da 1ª entrega"
+            " (view sobre a gld_agenciamento_2026_sla_movimentos); por orçamento, soma o h_trabalho da gld_agenci"
+            "amento_2026_sla_entregas. Sempre igual à base"
+            ". Regras: docs/tabelas/gld_agenciamento_2026_sla_entregas.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2026",
+            "origem": "monday",
+            "tipo": "sla-entregas-status",
+        },
+    },
+    "gld_agenciamento_fila_mensal": {
+        "descricao": (
+            "Extrato de fila por mês e mês de entrada (view sobre a gld_agenciamento_fluxo_mensal): represados e "
+            "novos no início, entregues e saídas sem entrega no mês, e o que segue aberto no fim; só pedidos do p"
+            "róprio ano, mais as entregas do mês de safras de anos anteriores. Sempre igual à base"
+            ". Regras: docs/tabelas/gld_agenciamento_fila_mensal.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2024-2026",
+            "origem": "monday",
+            "tipo": "fila-mensal",
+        },
+    },
+    "gld_agenciamento_atendimento_mensal": {
+        "descricao": (
+            "O mês do Atendimento (view sobre a gld_agenciamento_entrada_diaria, a gld_agenciamento_fluxo_mensal "
+            "e a gld_agenciamento_2026_saidas_status): entradas, entregues e saídas sem entrega dos pedidos do an"
+            "o, fila que veio e que ficou, para atender, saídas externas e a demanda que dependia da equipe. Semp"
+            "re igual às bases"
+            ". Regras: docs/tabelas/gld_agenciamento_atendimento_mensal.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2024-2026",
+            "origem": "monday",
+            "tipo": "atendimento-mensal",
+        },
+    },
+    "gld_agenciamento_previsao_mensal": {
+        "descricao": (
+            "Pedidos por mês de entrada e tipo de input (Inbound, Mercado) desde 2024-10 (view sobre a gld_agenci"
+            "amento_entrada_diaria, soma por mês); completo separa os meses fechados do mês de ontem. Séries long"
+            "as da previsão de demanda. Sempre igual à base"
+            ". Regras: docs/tabelas/gld_agenciamento_previsao_mensal.md (PPD-GOLDEN-AGENCIAMENTO-MONDAY)"
+        ),
+        "labels": {
+            "projeto": "ppd-golden-agenciamento-monday",
+            "camada": "gold",
+            "board": "agenciamento-2024-2026",
+            "origem": "monday",
+            "tipo": "previsao-mensal",
+        },
+    },
 }
 
 
@@ -135,8 +354,36 @@ def gerar_descricoes(tabela: str) -> Path:
     return destino
 
 
+def gerar_view(view: str) -> Path:
+    conf = VIEWS[view]
+    select = (RAIZ / "sql" / f"{view}.sql").read_text(encoding="utf-8").rstrip().rstrip(";")
+    with (RAIZ / "sql" / "esquemas" / f"{view}.csv").open(encoding="utf-8", newline="") as f:
+        colunas = list(csv.DictReader(f))
+
+    # numa view, a lista de colunas leva só nome e descrição (o tipo vem do SELECT)
+    linhas_colunas = ",\n".join(f"  {c['coluna']} OPTIONS(description={texto(c['descricao'])})" for c in colunas)
+    labels = ", ".join(f"({texto(k)}, {texto(v)})" for k, v in conf["labels"].items())
+
+    ddl = (
+        f"-- GERADO por tools/gerar_deploy.py a partir de sql/{view}.sql e sql/esquemas/{view}.csv.\n"
+        "-- Não editar à mão: altere o SELECT ou o esquema e gere de novo.\n"
+        f"-- Executar no BigQuery com a conta corporativa, no projeto {PROJETO_GCP} (região US), depois de criar a\n"
+        "-- tabela base. Recria só a view (CREATE OR REPLACE VIEW): seguro repetir; não guarda dados nem mexe na base.\n\n"
+        f"CREATE OR REPLACE VIEW `{PROJETO_GCP}.{DATASET}.{view}`\n"
+        f"(\n{linhas_colunas}\n)\n"
+        f"OPTIONS(\n  description={texto(conf['descricao'])},\n  labels=[{labels}]\n)\n"
+        f"AS\n{select}\n;\n"
+    )
+    destino = RAIZ / "deploy" / f"criar_{view}.sql"
+    destino.write_text(ddl, encoding="utf-8")
+    return destino
+
+
 if __name__ == "__main__":
-    nomes = sys.argv[1:] or list(TABELAS)
+    nomes = sys.argv[1:] or list(TABELAS) + list(VIEWS)
     for nome in nomes:
+        if nome in VIEWS:
+            print(gerar_view(nome).relative_to(RAIZ))
+            continue
         print(gerar(nome).relative_to(RAIZ))
         print(gerar_descricoes(nome).relative_to(RAIZ))

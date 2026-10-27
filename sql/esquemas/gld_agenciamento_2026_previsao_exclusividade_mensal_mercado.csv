@@ -1,0 +1,8 @@
+coluna,tipo,descricao
+mes,DATE,"1º dia do mês de entrada dos pedidos (regras de data da gld_agenciamento_entrada_diaria), de janeiro até o mês de ontem; só Mercado. É a chave"
+exclusivos,INT64,Pedidos com talento exclusivo na data do pedido
+nao_exclusivos,INT64,Pedidos com talento não exclusivo na data do pedido (inclui Squad de Talentos)
+sem_talento,INT64,Pedidos sem exclusividade definida na silver (sem talento)
+total,INT64,exclusivos + nao_exclusivos + sem_talento; igual às entradas de Mercado do mês na gld_agenciamento_entrada_diaria (quantidade + quantidade_estimada)
+completo,BOOL,"TRUE = mês fechado; FALSE = mês de ontem, ainda parcial (não comparar com mês fechado)"
+_processado_em,TIMESTAMP,Momento da execução

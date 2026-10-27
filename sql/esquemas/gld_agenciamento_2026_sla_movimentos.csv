@@ -35,3 +35,4 @@ entrega_sem_aguardando,BOOL,"Fechou vindo da equipe sem registrar a nova entrega
 encerrado_sem_entrega,BOOL,Fechou vindo da equipe sem nunca ter ido ao cliente (R19); Declinado não conta
 link_projeto,STRING,Link do projeto no monday
 _processado_em,TIMESTAMP,Momento da execução que gerou a tabela
+sla_sem_almoco_horas,FLOAT64,"Tempo útil do status concluído sem o almoço, em horas, sem arredondar (R24): mesmos dias úteis do sla_util_horas, só das 10h às 13h e das 14h às 19h (dia útil = 8 h); NULL enquanto o status não termina. Nunca maior que sla_util_horas (fora o arredondamento dele, de 2 casas)"

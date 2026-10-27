@@ -33,9 +33,13 @@ DATASET_GOLD = os.environ.get("BQ_DATASET_GOLD", "gold_monday")
 # tabelas que a produção deve atualizar; TABELAS diferente disso gera aviso no log (proteção contra um deploy com a
 # lista desatualizada, que tiraria uma tabela da atualização sem falhar)
 # A ordem importa: a validação de uma tabela pode conferir contra outra já calculada nesta execução (o fluxo mensal
-# confere contra a entrada diária), então a de referência vem antes
+# confere contra a entrada diária), então a de referência vem antes. Conferências: talentos_ano → diária;
+# talentos_ranking → talentos_ano; saidas_status → fluxo; previsao_exclusividade_diaria → diária e talentos_ano;
+# previsao_lotes → previsao_exclusividade_diaria. As views (cadastro VIEWS do tools/gerar_deploy.py) não entram aqui
 TABELAS_PRODUCAO = ["gld_agenciamento_2026_sla_movimentos", "gld_agenciamento_entrada_diaria",
-                    "gld_agenciamento_fluxo_mensal"]
+                    "gld_agenciamento_fluxo_mensal", "gld_agenciamento_2026_talentos_ano",
+                    "gld_agenciamento_2026_talentos_ranking", "gld_agenciamento_2026_saidas_status",
+                    "gld_agenciamento_2026_previsao_exclusividade_diaria", "gld_agenciamento_2026_previsao_lotes"]
 TABELAS = [t.strip() for t in os.environ.get("TABELAS", ",".join(TABELAS_PRODUCAO)).split(",") if t.strip()]
 # silvers diárias que precisam ser de hoje; as de carga única (slv_agenciamento_2024_itens e _2025_itens) ficam fora
 FONTES = [

@@ -43,4 +43,5 @@ ALTER TABLE `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_2026_sla_movi
   ALTER COLUMN entrega_sem_aguardando SET OPTIONS(description="Fechou vindo da equipe sem registrar a nova entrega em Aguardando Feedback, depois de já ter ido ao cliente (R19); Declinado não conta"),
   ALTER COLUMN encerrado_sem_entrega SET OPTIONS(description="Fechou vindo da equipe sem nunca ter ido ao cliente (R19); Declinado não conta"),
   ALTER COLUMN link_projeto SET OPTIONS(description="Link do projeto no monday"),
-  ALTER COLUMN _processado_em SET OPTIONS(description="Momento da execução que gerou a tabela");
+  ALTER COLUMN _processado_em SET OPTIONS(description="Momento da execução que gerou a tabela"),
+  ALTER COLUMN sla_sem_almoco_horas SET OPTIONS(description="Tempo útil do status concluído sem o almoço, em horas, sem arredondar (R24): mesmos dias úteis do sla_util_horas, só das 10h às 13h e das 14h às 19h (dia útil = 8 h); NULL enquanto o status não termina. Nunca maior que sla_util_horas (fora o arredondamento dele, de 2 casas)");

@@ -1,0 +1,5 @@
+coluna,tipo,descricao
+projeto_id,STRING,"Orçamento entregue (o mesmo da gld_agenciamento_2026_sla_entregas). Com status, forma a chave"
+status,STRING,"Status da fase equipe antes da 1ª entrega (sem o Retorno Marca)"
+h,FLOAT64,"Horas sem almoço no status (passagens repetidas somadas); por orçamento, a soma é o h_trabalho"
+_processado_em,TIMESTAMP,"Execução da gld_agenciamento_2026_sla_movimentos que a view lê"

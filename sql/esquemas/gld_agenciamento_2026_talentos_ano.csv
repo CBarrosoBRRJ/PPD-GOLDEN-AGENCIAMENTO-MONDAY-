@@ -1,0 +1,8 @@
+coluna,tipo,descricao
+ano,INT64,"Ano dos pedidos (o de ontem). Conta de 1º/jan até ontem, pela data de entrada da gld_agenciamento_entrada_diaria (criado_em; cadastro retroativo pela data_de_entrada; sem criado_em, data_de_saida − 5 dias úteis)"
+categoria,STRING,"Exclusivos, Não exclusivos (inclui Squad de Talentos) ou Sem talento (exclusividade nula na silver). Com ano, forma a chave"
+n,INT64,"Pedidos (cards ativos do board 2026) da categoria no ano"
+total,INT64,"Pedidos do ano nas três categorias; igual às entradas do ano na gld_agenciamento_entrada_diaria (quantidade + quantidade_estimada)"
+pct,FLOAT64,"Participação da categoria em %, 1 casa decimal; as três somam 100,0 (maior resto)"
+dos_quais_squad,INT64,"Dos pedidos da categoria, quantos têm talento Squad de Talentos (um grupo, não uma pessoa)"
+_processado_em,TIMESTAMP,"Momento da execução"

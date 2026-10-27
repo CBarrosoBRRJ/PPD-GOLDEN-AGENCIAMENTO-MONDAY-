@@ -1,0 +1,10 @@
+coluna,tipo,descricao
+mes,DATE,"1º dia do mês do extrato, de 2024-10 até o mês de ontem. Com mes_entrada, forma a chave"
+mes_entrada,DATE,"Safra: 1º dia do mês de entrada dos pedidos"
+do_ano,BOOL,"TRUE = safra do mesmo ano do mês (entra na fila); FALSE = safra de ano anterior, só com as entregas do mês"
+novos,INT64,"Pedidos que entraram no próprio mês (safra = mês)"
+represados,INT64,"Pedidos de safras anteriores do ano ainda abertos no 1º dia do mês"
+entregues,INT64,"Entregues ao cliente no mês (1ª entrega)"
+nao_seguiram,INT64,"Saíram sem entrega no mês; sem data, no mês de entrada"
+seguem,INT64,"Ainda abertos no fim do mês (no mês de ontem, até ontem)"
+_processado_em,TIMESTAMP,"Execução da gld_agenciamento_fluxo_mensal que a view lê"

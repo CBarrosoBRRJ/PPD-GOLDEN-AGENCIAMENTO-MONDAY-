@@ -1,0 +1,8 @@
+coluna,tipo,descricao
+data,DATE,"Data de entrada dos pedidos (regras de data da gld_agenciamento_entrada_diaria), de 1º/jan até ontem; só dias com pedido no recorte. Com recorte, forma a chave"
+recorte,STRING,"inbound, mercado, mercado_exclusivos ou mercado_nao_exclusivos (os recortes da previsão; os dois últimos são partes do mercado com exclusividade definida)"
+pedidos,INT64,"Pedidos do recorte no dia; igual ao total do dia na gld_agenciamento_2026_previsao_exclusividade_diaria"
+em_lote,INT64,"Pedidos que fazem parte de um lote: 3 ou mais pedidos do recorte com a mesma marca (ou prefixo [Marca] do nome) no mesmo dia"
+avulsos,INT64,"pedidos − em_lote (inclui os sem marca)"
+lotes,INT64,"Quantos lotes (marcas com 3 ou mais pedidos no recorte e no dia)"
+_processado_em,TIMESTAMP,"Momento da execução"

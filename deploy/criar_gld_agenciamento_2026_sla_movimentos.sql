@@ -40,7 +40,8 @@ CREATE OR REPLACE TABLE `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_2
   entrega_sem_aguardando BOOL OPTIONS(description="Fechou vindo da equipe sem registrar a nova entrega em Aguardando Feedback, depois de já ter ido ao cliente (R19); Declinado não conta"),
   encerrado_sem_entrega BOOL OPTIONS(description="Fechou vindo da equipe sem nunca ter ido ao cliente (R19); Declinado não conta"),
   link_projeto STRING OPTIONS(description="Link do projeto no monday"),
-  _processado_em TIMESTAMP OPTIONS(description="Momento da execução que gerou a tabela")
+  _processado_em TIMESTAMP OPTIONS(description="Momento da execução que gerou a tabela"),
+  sla_sem_almoco_horas FLOAT64 OPTIONS(description="Tempo útil do status concluído sem o almoço, em horas, sem arredondar (R24): mesmos dias úteis do sla_util_horas, só das 10h às 13h e das 14h às 19h (dia útil = 8 h); NULL enquanto o status não termina. Nunca maior que sla_util_horas (fora o arredondamento dele, de 2 casas)")
 )
 CLUSTER BY projeto_id, status_atual
 OPTIONS(
@@ -309,6 +310,18 @@ tempo AS (
       WHERE EXTRACT(DAYOFWEEK FROM d) BETWEEN 2 AND 6  -- segunda a sexta
         AND d NOT IN UNNEST(f.dias)
     ) AS seg_util,
+    -- R24: útil sem almoço = mesmos dias úteis, só das 10h às 13h e das 14h às 19h (dia útil = 8 h). Em
+    -- microssegundos, como o app/expediente.py do site de relatórios (em segundos, até 1 s de diferença por passo)
+    (
+      SELECT IFNULL(SUM(GREATEST(0, DATETIME_DIFF(
+               LEAST(h.fim, DATETIME(d, j.fim)),
+               GREATEST(h.entrada, DATETIME(d, j.inicio)), MICROSECOND))), 0)
+      FROM UNNEST(GENERATE_DATE_ARRAY(DATE(h.entrada), DATE(h.fim))) AS d,
+        UNNEST([STRUCT(TIME '10:00:00' AS inicio, TIME '13:00:00' AS fim),
+                STRUCT(TIME '14:00:00' AS inicio, TIME '19:00:00' AS fim)]) AS j
+      WHERE EXTRACT(DAYOFWEEK FROM d) BETWEEN 2 AND 6  -- segunda a sexta
+        AND d NOT IN UNNEST(f.dias)
+    ) AS us_util_sem_almoco,
     -- R21: horário da mudança que encerrou o passo
     CASE
       WHEN h.saida IS NULL THEN NULL
@@ -407,7 +420,11 @@ SELECT
           PARTITION BY t.projeto_id ORDER BY t.passo ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), FALSE), FALSE)
     AS encerrado_sem_entrega,
   p.link_projeto,
-  CURRENT_TIMESTAMP() AS _processado_em
+  CURRENT_TIMESTAMP() AS _processado_em,
+  -- R24: tempo útil sem almoço do status concluído (NULL enquanto o status não termina). Sem arredondar (as demais
+  -- horas têm 2 casas): somado por orçamento, o arredondamento mudava a faixa de 8 h ou 16 h de um orçamento no SLA.
+  -- Depois de _processado_em porque entra por ALTER TABLE ... ADD COLUMN, que acrescenta no fim
+  IF(t.saida IS NULL, NULL, t.us_util_sem_almoco / 3600000000) AS sla_sem_almoco_horas
 FROM extra t
 JOIN projetos p USING (projeto_id)
 LEFT JOIN orcamento o USING (projeto_id)

@@ -1,0 +1,9 @@
+coluna,tipo,descricao
+mes,DATE,"1º dia do mês de entrada dos pedidos (regras de data da gld_agenciamento_entrada_diaria), de janeiro até o mês de ontem. Com tipo, forma a chave"
+tipo,STRING,Tipo de input da silver: Inbound ou Mercado (as séries da previsão de demanda)
+exclusivos,INT64,Pedidos com talento exclusivo na data do pedido
+nao_exclusivos,INT64,Pedidos com talento não exclusivo na data do pedido (inclui Squad de Talentos)
+sem_talento,INT64,Pedidos sem exclusividade definida na silver (sem talento)
+total,INT64,exclusivos + nao_exclusivos + sem_talento; igual às entradas do mês e tipo na gld_agenciamento_entrada_diaria (quantidade + quantidade_estimada)
+completo,BOOL,"TRUE = mês fechado; FALSE = mês de ontem (último dia da base), ainda parcial (não comparar com mês fechado)"
+_processado_em,TIMESTAMP,Momento da execução da tabela base (gld_agenciamento_2026_previsao_exclusividade_diaria)

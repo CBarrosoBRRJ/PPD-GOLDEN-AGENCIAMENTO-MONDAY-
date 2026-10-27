@@ -1,0 +1,8 @@
+coluna,tipo,descricao
+mes,DATE,"1º dia do mês de entrada, de 2024-10 até o mês de ontem. Com tipo, forma a chave"
+tipo,STRING,"Tipo de input: Inbound ou Mercado"
+pedidos,INT64,"quantidade + quantidade_estimada da gld_agenciamento_entrada_diaria no mês"
+estimados,INT64,"Dos pedidos, quantos com data estimada"
+completo,BOOL,"TRUE = mês fechado; FALSE = mês de ontem, parcial"
+dados_ate,DATE,"Ontem: último dia da carga (véspera do _processado_em, em São Paulo)"
+_processado_em,TIMESTAMP,"Execução da gld_agenciamento_entrada_diaria que a view lê"

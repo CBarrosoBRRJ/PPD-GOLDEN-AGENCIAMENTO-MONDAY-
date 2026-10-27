@@ -6,7 +6,7 @@
 | **Pergunta** | quanto tempo cada projeto ficou em cada status, de quem era o relógio (equipe, cliente, standby) e onde o fluxo desviou |
 | **Por que existe** | o monday só mostra o status atual de cada card, e o log tem 178 mil eventos que ninguém lê à mão; não havia medida de quanto tempo cada projeto ficou com a equipe, com a marca ou parado, nem de onde o fluxo desvia (retrabalho, reabertura, fechamento sem entrega) |
 | **O que esperamos fazer** | Power BI de SLA por fase, status e responsável; cobrança de marca sem retorno (`alerta`); medir retrabalho, reabertura e trabalho fora do expediente; base para a meta de SLA da equipe (L1 em `docs/melhorias_processo.md`) e para o site de relatórios |
-| **Saída esperada** | uma linha por passagem de projeto por status (≈ 15 mil linhas, ≈ 3.100 projetos), com horas corridas e úteis, fase, em aberto, alerta e marcações do fluxo; recalculada por inteiro a cada execução; 19 verificações ok em toda carga |
+| **Saída esperada** | uma linha por passagem de projeto por status (≈ 15 mil linhas, ≈ 3.100 projetos), com horas corridas e úteis, fase, em aberto, alerta e marcações do fluxo; recalculada por inteiro a cada execução; 21 verificações ok em toda carga (19 até a R24) |
 | **Uma linha por** | passagem de um projeto por um status — chave `projeto_id` + `passo` |
 | **Quem usa** | Power BI (e, no futuro, o site de relatórios) |
 | **Fontes** | `silver_monday.slv_agenciamento_2026_itens` (recorte e atributos) e `silver_monday.slv_agenciamento_2026_log` (mudanças de Status) |
@@ -49,7 +49,7 @@ No Power BI: **SLA da equipe** = soma de `sla_util_horas` com `fase = equipe`; *
 | 12 | `extra` | trabalho fora do expediente e hora extra estimada | R20 |
 | 13 | SELECT final | colunas na ordem do esquema; alerta e marcações do fluxo | R18, R19 |
 
-## 3. Colunas (36)
+## 3. Colunas (37)
 
 Fonte única: [`sql/esquemas/gld_agenciamento_2026_sla_movimentos.csv`](../../sql/esquemas/gld_agenciamento_2026_sla_movimentos.csv)
 (as descrições vão para o BigQuery na criação).
@@ -92,6 +92,7 @@ Fonte única: [`sql/esquemas/gld_agenciamento_2026_sla_movimentos.csv`](../../sq
 | 34 | `encerrado_sem_entrega` | BOOL | fluxo | fechou sem nunca ter ido ao cliente (R19) |
 | 35 | `link_projeto` | STRING | rastreio | link no monday |
 | 36 | `_processado_em` | TIMESTAMP | rastreio | momento da execução |
+| 37 | `sla_sem_almoco_horas` | FLOAT64 | tempo | útil sem almoço do passo concluído, sem arredondar (R24); depois de `_processado_em` porque entra por `ADD COLUMN` |
 
 Vazios ficam NULL (no Power BI, "(Em branco)"); a gold não preenche atributos — a silver já aplicou as regras.
 
@@ -110,6 +111,7 @@ Os IDs são os da construção (21/10/2026) e não são renumerados; R16 é de u
 | R11 | Só projetos com alguma mudança de Status no log (sem histórico, o tempo seria inventado) | −122 → 4.365 |
 | R12 | Só projetos cujo histórico **começa em Entrada**: 1ª mudança é Entrada → outro, ou vazio → Entrada | −1.270 → **3.095** |
 | R23 | Sem `criado_em` não entra (o 1º passo ficaria sem entrada e sem tempo). Decisão do Caio, 22/10/2026, a partir da revisão do Codex | 0 projetos afetados em 22/10/2026 (os 5 ativos sem `criado_em` já ficavam fora do recorte) |
+| R24 | **Útil sem almoço** (`sla_sem_almoco_horas`): mesmos dias úteis e calendário da R14, só das 10h às 13h e das 14h às 19h (dia útil = 8 h), em microssegundos, sem arredondar (somado por orçamento, 4 casas mudavam a faixa de 1 orçamento); NULL no status aberto. Expediente sem almoço decidido pelo Caio em 21/10/2026 (site de relatórios, exceção C2 de lá); a coluna existe para o site deixar de recalcular (PD21 de lá). Pedido de 26/10/2026, plano da auditoria do site | 26/10/2026: 11.858 passos concluídos iguais ao `app/expediente.py` do site (diferença abaixo de 0,0001 h); as 36 colunas anteriores idênticas à produção (14.998 linhas, 0 diferenças) |
 
 Ressalva do R12: jan–mai/2026 ficam com 46–67% dos projetos por mês (jun–out 78–92%), porque o board antigo
 registrava muitos projetos nascendo sem status e indo direto para outro (caso "vazio → outro", 692) ou já num status do
@@ -168,7 +170,9 @@ meio (578). Decisão do Caio: manter só o fluxo completo e ordenado.
 Arquivo: [`sql/validacoes/gld_agenciamento_2026_sla_movimentos.sql`](../../sql/validacoes/gld_agenciamento_2026_sla_movimentos.sql)
 (19 verificações; rodar depois de cada criação). Ensaio de 21/10/2026, sobre o SELECT: **16 de 16 OK**. Em
 22/10/2026 entraram 3 verificações (entrada preenchida — R23; passo concluído com tempo corrido e útil; nenhum status
-repetido em sequência — R9 depois de R10), todas com 0 na tabela de produção.
+repetido em sequência — R9 depois de R10), todas com 0 na tabela de produção. Em 26/10/2026, mais 2 (R24: valor só no
+passo concluído; entre 0 e `sla_util_horas` com tolerância de 0,006 h dos arredondamentos — maior excesso 0,0053 h),
+**21 de 21 OK** sobre o SELECT novo.
 
 | Verificação | Resultado |
 |---|---|
@@ -208,3 +212,4 @@ corrigido, alerta), [Ceraflame] Brissa Ioselli (Standby, em aberto), [Grupo BBM]
 | 21/10/2026 | Implantação: tabela criada no BigQuery (validação 16/16), job `gold-agenciamento` agendado seg–sex 09:00, alerta testado |
 | 22/10/2026 | Revisão do Codex, aprovada pelo Caio: R23 (sem `criado_em` não entra); R10 antes de R9/R22; 3 verificações novas. Comparado com a produção: histórico idêntico (14.838 linhas, 3.105 projetos, 0 diferenças). **Em produção** desde a execução `x4sl4` (19:08 Brasília), junto com a entrada diária, na mesma transação; validação 19/19 |
 | 21/10/2026 | Revisão final: nome `gld_agenciamento_2026_sla_movimentos`; materialização como tabela; esquema em CSV com descrições; comando de criação gerado; validação com 16 verificações (16/16 OK); 1º passo robusto a evento antes da criação; calendário desde 2020 |
+| 26/10/2026 | R24: coluna `sla_sem_almoco_horas` (útil sem almoço) para o site de relatórios; 2 verificações novas (21/21 OK sobre o SELECT); colunas anteriores idênticas à produção. Sobe por `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` + `deploy/descrever_…sql` + reimplantação do job, depois de 28/10/2026 |

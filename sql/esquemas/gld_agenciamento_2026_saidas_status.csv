@@ -1,0 +1,6 @@
+coluna,tipo,descricao
+mes,DATE,"1º dia do mês do evento: mês em que o card chegou ao status final, pela última entrada nele no log; nunca antes do mês de entrada; sem data no log = mês de entrada. Com status, forma a chave"
+status,STRING,"Status atual do board que encerrou o card sem entrega: Declinado (e variações que começam por Declinado), Standby ou Encerrado"
+n,INT64,"Cards que entraram no ano (1º/jan até ontem) e saíram sem entrega com esse status nesse mês. Soma do mês = nao_seguiu do mês na gld_agenciamento_fluxo_mensal (safra do ano)"
+sem_data,INT64,"Dos n, quantos não têm a chegada ao status no log (contados no mês de entrada; no fluxo ficam com mes_evento NULL)"
+_processado_em,TIMESTAMP,"Momento da execução"

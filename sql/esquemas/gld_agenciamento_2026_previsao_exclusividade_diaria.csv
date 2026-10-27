@@ -1,0 +1,9 @@
+coluna,tipo,descricao
+data,DATE,"Dia de entrada dos pedidos (regras de data da gld_agenciamento_entrada_diaria), todo dia de 1º/jan até ontem, com zero quando não há pedido. Com tipo, forma a chave"
+tipo,STRING,Tipo de input da silver: Inbound ou Mercado (as séries da previsão de demanda)
+dia_util,BOOL,"TRUE = segunda a sexta fora do calendário sem expediente (feriados nacionais, RJ, SP, Carnaval, Cinzas, Sexta-feira Santa, Corpus Christi e vésperas de Natal e Ano-Novo)"
+exclusivos,INT64,Pedidos com talento exclusivo na data do pedido
+nao_exclusivos,INT64,Pedidos com talento não exclusivo na data do pedido (inclui Squad de Talentos)
+sem_talento,INT64,Pedidos sem exclusividade definida na silver (sem talento)
+total,INT64,exclusivos + nao_exclusivos + sem_talento; igual às entradas do dia e tipo na gld_agenciamento_entrada_diaria (quantidade + quantidade_estimada)
+_processado_em,TIMESTAMP,Momento da execução

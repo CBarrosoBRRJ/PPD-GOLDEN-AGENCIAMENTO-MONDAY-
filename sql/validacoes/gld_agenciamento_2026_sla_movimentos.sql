@@ -2,6 +2,7 @@
 -- Rodar depois de cada criação/atualização. Toda linha deve sair com ok = TRUE.
 -- Referência do ensaio de 21/10/2026: 14.776 linhas, 3.095 projetos.
 -- 22/10/2026: + entrada preenchida (R23), tempo dos passos concluídos e status repetido em sequência (R9 depois de R10).
+-- 26/10/2026: + tempo sem almoço (R24): preenchido só no passo concluído; entre 0 e o útil com almoço.
 
 WITH t AS (
   SELECT * FROM `gglobo-viu-dados-hdg-prd.gold_monday.gld_agenciamento_2026_sla_movimentos`
@@ -76,6 +77,14 @@ FROM UNNEST([
   ('uma execução só (_processado_em único)',
     CAST((SELECT COUNT(DISTINCT _processado_em) FROM t) AS STRING), '1',
     (SELECT COUNT(DISTINCT _processado_em) = 1 FROM t)),
+  ('sem almoço (R24): passo concluído sem o valor ou status aberto com valor',
+    CAST((SELECT COUNTIF((saida IS NULL) != (sla_sem_almoco_horas IS NULL)) FROM t) AS STRING), '0',
+    (SELECT COUNTIF((saida IS NULL) != (sla_sem_almoco_horas IS NULL)) = 0 FROM t)),
+  -- o útil com almoço é em segundos inteiros e tem 2 casas: até 0,005 h + ~1 s abaixo do sem almoço (microssegundos,
+  -- sem arredondar). Maior excesso em 26/10/2026: 0,0053 h. Um erro de expediente passaria de 1 h
+  ('sem almoço (R24): negativo ou maior que sla_util_horas (tolerância 0,006 h dos arredondamentos)',
+    CAST((SELECT COUNTIF(sla_sem_almoco_horas < 0 OR sla_sem_almoco_horas > sla_util_horas + 0.006) FROM t) AS STRING),
+    '0', (SELECT COUNTIF(sla_sem_almoco_horas < 0 OR sla_sem_almoco_horas > sla_util_horas + 0.006) = 0 FROM t)),
   -- volume: informativo (o recorte muda: um projeto que volta de Aguardando Feedback para a equipe sai e depois volta)
   ('volume: projetos (ensaio 21/10/2026 = 3.095)',
     CAST((SELECT COUNT(DISTINCT projeto_id) FROM t) AS STRING), 'perto de 3.095 e crescendo',

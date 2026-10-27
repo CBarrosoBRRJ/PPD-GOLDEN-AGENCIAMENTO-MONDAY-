@@ -1,0 +1,11 @@
+coluna,tipo,descricao
+grupo,STRING,"Recorte: todos (exclusivos + não exclusivos pelo mesmo nome), exclusivo ou nao-exclusivo. Com talento e mes, forma a chave"
+talento,STRING,"Nome do talento na grafia mais frequente do recorte (agrupado sem diferença de maiúsculas e espaços). Sem Squad de Talentos e sem pedidos sem talento"
+n,INT64,"Pedidos do talento no ano (1º/jan até ontem), no recorte; repete em todas as linhas do talento"
+ultimo_pedido,DATE,"Data de entrada do último pedido do talento no ano, no recorte"
+empate_fora,INT64,"Talentos do recorte fora da lista com o mesmo número de pedidos do 10º lugar (a tela mostra ""empate com mais N""); repete no recorte"
+talentos_grupo,INT64,"Talentos nomeados com pedido no ano, no recorte; repete no recorte"
+mes,DATE,"1º dia do mês dos pedidos (mês da data de entrada); só meses com pedido do talento"
+n_mes,INT64,"Pedidos do talento no mês, no recorte"
+pos,INT64,"Lugar do talento no ano, no recorte (1 = mais pedidos; empate pela ordem alfabética). pos > 10 = esteve entre os 10 do acumulado no fim de algum mês, mas não fechou o ano entre os 10"
+_processado_em,TIMESTAMP,"Momento da execução"
