@@ -8,22 +8,22 @@ projeto inteiro está no [PRD](docs/PRD.md).
 
 | Tabela | Grão | Ficha |
 |---|---|---|
-| `gold_monday.gld_agenciamento_2026_sla_movimentos` (coluna `sla_sem_almoco_horas`, R24: no código, aguardando a subida) | passagem de um projeto por um status | [docs/tabelas/gld_agenciamento_2026_sla_movimentos.md](docs/tabelas/gld_agenciamento_2026_sla_movimentos.md) |
+| `gold_monday.gld_agenciamento_2026_sla_movimentos` (coluna `sla_sem_almoco_horas`, R24, desde 27/10/2026) | passagem de um projeto por um status | [docs/tabelas/gld_agenciamento_2026_sla_movimentos.md](docs/tabelas/gld_agenciamento_2026_sla_movimentos.md) |
 | `gold_monday.gld_agenciamento_entrada_diaria` (em produção desde 22/10/2026) | data × grupo de input × tipo de input × família | [docs/tabelas/gld_agenciamento_entrada_diaria.md](docs/tabelas/gld_agenciamento_entrada_diaria.md) |
 | `gold_monday.gld_agenciamento_fluxo_mensal` (em produção desde 23/10/2026) | mês de entrada × evento × mês do evento × grupo × tipo × família | [docs/tabelas/gld_agenciamento_fluxo_mensal.md](docs/tabelas/gld_agenciamento_fluxo_mensal.md) |
-| `gold_monday.gld_agenciamento_2026_talentos_ano` (tabela; no código, aguardando a subida) | ano × categoria | [docs/tabelas/gld_agenciamento_2026_talentos_ano.md](docs/tabelas/gld_agenciamento_2026_talentos_ano.md) |
-| `gold_monday.gld_agenciamento_2026_talentos_ranking` (tabela; no código, aguardando a subida) | recorte × talento × mês | [docs/tabelas/gld_agenciamento_2026_talentos_ranking.md](docs/tabelas/gld_agenciamento_2026_talentos_ranking.md) |
-| `gold_monday.gld_agenciamento_2026_saidas_status` (tabela; no código, aguardando a subida) | mês × status | [docs/tabelas/gld_agenciamento_2026_saidas_status.md](docs/tabelas/gld_agenciamento_2026_saidas_status.md) |
-| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_diaria` (tabela; no código, aguardando a subida) | dia × tipo | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
-| `gold_monday.gld_agenciamento_2026_previsao_lotes` (tabela; no código, aguardando a subida) | dia × recorte | [docs/tabelas/gld_agenciamento_2026_previsao_lotes.md](docs/tabelas/gld_agenciamento_2026_previsao_lotes.md) |
-| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_mensal` (view; no código, aguardando a subida) | mês × tipo | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
-| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_mensal_inbound` (view; no código, aguardando a subida) | mês | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
-| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_mensal_mercado` (view; no código, aguardando a subida) | mês | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
-| `gold_monday.gld_agenciamento_2026_sla_entregas` (view; no código, aguardando a subida) | orçamento entregue | [docs/tabelas/gld_agenciamento_2026_sla_entregas.md](docs/tabelas/gld_agenciamento_2026_sla_entregas.md) |
-| `gold_monday.gld_agenciamento_2026_sla_entregas_status` (view; no código, aguardando a subida) | orçamento × status | [docs/tabelas/gld_agenciamento_2026_sla_entregas.md](docs/tabelas/gld_agenciamento_2026_sla_entregas.md) |
-| `gold_monday.gld_agenciamento_fila_mensal` (view; no código, aguardando a subida) | mês × mês de entrada | [docs/tabelas/gld_agenciamento_fila_mensal.md](docs/tabelas/gld_agenciamento_fila_mensal.md) |
-| `gold_monday.gld_agenciamento_atendimento_mensal` (view; no código, aguardando a subida) | mês | [docs/tabelas/gld_agenciamento_atendimento_mensal.md](docs/tabelas/gld_agenciamento_atendimento_mensal.md) |
-| `gold_monday.gld_agenciamento_previsao_mensal` (view; no código, aguardando a subida) | mês × tipo | [docs/tabelas/gld_agenciamento_previsao_mensal.md](docs/tabelas/gld_agenciamento_previsao_mensal.md) |
+| `gold_monday.gld_agenciamento_2026_talentos_ano` (tabela; em produção desde 27/10/2026) | ano × categoria | [docs/tabelas/gld_agenciamento_2026_talentos_ano.md](docs/tabelas/gld_agenciamento_2026_talentos_ano.md) |
+| `gold_monday.gld_agenciamento_2026_talentos_ranking` (tabela; em produção desde 27/10/2026) | recorte × talento × mês | [docs/tabelas/gld_agenciamento_2026_talentos_ranking.md](docs/tabelas/gld_agenciamento_2026_talentos_ranking.md) |
+| `gold_monday.gld_agenciamento_2026_saidas_status` (tabela; em produção desde 27/10/2026) | mês × status | [docs/tabelas/gld_agenciamento_2026_saidas_status.md](docs/tabelas/gld_agenciamento_2026_saidas_status.md) |
+| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_diaria` (tabela; em produção desde 27/10/2026) | dia × tipo | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
+| `gold_monday.gld_agenciamento_2026_previsao_lotes` (tabela; em produção desde 27/10/2026) | dia × recorte | [docs/tabelas/gld_agenciamento_2026_previsao_lotes.md](docs/tabelas/gld_agenciamento_2026_previsao_lotes.md) |
+| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_mensal` (view; em produção desde 27/10/2026) | mês × tipo | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
+| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_mensal_inbound` (view; em produção desde 27/10/2026) | mês | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
+| `gold_monday.gld_agenciamento_2026_previsao_exclusividade_mensal_mercado` (view; em produção desde 27/10/2026) | mês | [docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md](docs/tabelas/gld_agenciamento_2026_previsao_exclusividade_diaria.md) |
+| `gold_monday.gld_agenciamento_2026_sla_entregas` (view; em produção desde 27/10/2026) | orçamento entregue | [docs/tabelas/gld_agenciamento_2026_sla_entregas.md](docs/tabelas/gld_agenciamento_2026_sla_entregas.md) |
+| `gold_monday.gld_agenciamento_2026_sla_entregas_status` (view; em produção desde 27/10/2026) | orçamento × status | [docs/tabelas/gld_agenciamento_2026_sla_entregas.md](docs/tabelas/gld_agenciamento_2026_sla_entregas.md) |
+| `gold_monday.gld_agenciamento_fila_mensal` (view; em produção desde 27/10/2026) | mês × mês de entrada | [docs/tabelas/gld_agenciamento_fila_mensal.md](docs/tabelas/gld_agenciamento_fila_mensal.md) |
+| `gold_monday.gld_agenciamento_atendimento_mensal` (view; em produção desde 27/10/2026) | mês | [docs/tabelas/gld_agenciamento_atendimento_mensal.md](docs/tabelas/gld_agenciamento_atendimento_mensal.md) |
+| `gold_monday.gld_agenciamento_previsao_mensal` (view; em produção desde 27/10/2026) | mês × tipo | [docs/tabelas/gld_agenciamento_previsao_mensal.md](docs/tabelas/gld_agenciamento_previsao_mensal.md) |
 
 ## Estrutura
 
